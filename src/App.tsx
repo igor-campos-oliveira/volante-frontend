@@ -1,5 +1,5 @@
 import "./App.css";
-import ServiceOrderPage from "@/pages/ServiceOrder/ServiceOrder";
+import ServiceOrderPage from "@/pages/ServiceOrderNew/ServiceOrder";
 import { Toaster } from "./components/ui/sonner";
 import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
 import Menu from "./components/Menu/Menu";
