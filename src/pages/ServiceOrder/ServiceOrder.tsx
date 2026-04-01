@@ -185,7 +185,7 @@ function ServiceOrderPage() {
         </section>
         <p className="text-md font-bold pl-4">Imagens do Veículo</p>
         <Card className="p-4 rounded-3xl">
-          <FileSelect label="Imagens" />
+          <FileSelect label="Imagens" onChange={() => {}}/>
         </Card>
         </div>
         <footer
