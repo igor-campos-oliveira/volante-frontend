@@ -15,13 +15,17 @@ import HomePage from "./pages/Home";
 import NotFoundPage from "./pages/NotFoundPage";
 import AuthProvider, { useAuthContext } from "./hooks/useAuth";
 import LoginPage from "./pages/Login";
+import EmployeesPage from "./pages/Employees/EmployeesPage";
+import { Users } from "lucide-react";
 
 const MENU_LINKS = [
   {path: ROUTER_PATHS.HOME, label: 'Início',icon: <Home size={23}/>},
   {path: ROUTER_PATHS.SERVICE_ORDER + '/new',label: 'Novo',icon: <FilePlus size={23}/>},
   {path: ROUTER_PATHS.SERVICE_ORDERS,label: 'Orçamentos',icon: <FolderSearch size={23}/>},
   {path: ROUTER_PATHS.CUSTOMER,label: 'Clientes',icon: <User size={23}/>},
-  {path: ROUTER_PATHS.VEHICLE, label: 'Veículos', icon: <Car size={23}/>}
+  {path: ROUTER_PATHS.VEHICLE, label: 'Veículos', icon: <Car size={23}/>},
+  {path: ROUTER_PATHS.EMPLOYEE, label: 'Funcionários', icon: <Users size={23}/>}
+
 ]
 
 const INTERNAL_ROUTES = [
@@ -31,6 +35,7 @@ const INTERNAL_ROUTES = [
   { path: ROUTER_PATHS.CUSTOMER, element: <CustomersPage/> },
   { path: ROUTER_PATHS.VEHICLE, element: <VehiclesPage/> },
   { path: `${ROUTER_PATHS.SERVICE_ORDER}/:uuid`, element: <ServiceOrderPage/> },
+  { path: ROUTER_PATHS.EMPLOYEE, element: <EmployeesPage/> },
 ];
 
 const ProtectedLayout = () => {

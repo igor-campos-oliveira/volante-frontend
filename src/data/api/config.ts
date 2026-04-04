@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { supabase } from '@/utils/supabase';
+
 const TIMEOUT = 1000;
 
 export const api = axios.create({
@@ -7,6 +9,8 @@ export const api = axios.create({
     : 'https://volante-backend.fly.dev/',
   timeout: TIMEOUT,
 });
+
+export { supabase };
 
 export const auth = axios.create({
   baseURL: import.meta.env.DEV ? 'https://security-svc.fly.dev/' : 'https://security-svc.fly.dev/',
