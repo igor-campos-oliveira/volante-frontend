@@ -27,7 +27,7 @@ const DEFAULT_FORM_VALUES = {
   service_order_items: [],
   customer: DEFAULT_CUSTOMER_VALUE,
   vehicle: DEFAULT_VEHICLE_VALUES,
-  status: STATUS_SERVICE_ORDER.PENDING,
+  status: STATUS_SERVICE_ORDER.EM_ABERTO,
   startAt: "",
   endAt: "",
   note: "",
@@ -152,7 +152,7 @@ function ServiceOrderPage() {
             <Input type="date" {...methods.register("endAt")} />
           </div>
           <StatusDropDown
-            value={methods.watch("status", STATUS_SERVICE_ORDER.PENDING)}
+            value={methods.watch("status", STATUS_SERVICE_ORDER.EM_ABERTO)}
             title="Situação atual"
             options={SO_STATUS_LIST}
             onChange={(value) => methods.setValue("status", value)}

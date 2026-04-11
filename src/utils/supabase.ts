@@ -1,6 +1,21 @@
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY;
+const env = import.meta.env as ImportMetaEnv & {
+  VITE_SUPABASE_URL?: string;
+  VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY?: string;
+  NEXT_PUBLIC_SUPABASE_URL?: string;
+  NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY?: string;
+  VITE_SUPABASE_SCHEMA?: string;
+  NEXT_PUBLIC_SUPABASE_SCHEMA?: string;
+};
+
+export const supabaseUrl = env.VITE_SUPABASE_URL ?? env.NEXT_PUBLIC_SUPABASE_URL;
+export const supabaseKey =
+  env.VITE_SUPABASE_PUBLISHABLE_DEFAULT_KEY ?? env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+export const supabaseSchema = env.VITE_SUPABASE_SCHEMA ?? env.NEXT_PUBLIC_SUPABASE_SCHEMA ?? 'public';
+
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error('Missing Supabase configuration in environment variables.');
+}
 
 export const supabase = createClient(supabaseUrl, supabaseKey);

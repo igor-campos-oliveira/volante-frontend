@@ -10,6 +10,8 @@
     "tauri": "tauri dev"
   },
   "dependencies": {
+    "@heroui/react": "^3.0.2",
+    "@heroui/styles": "^3.0.2",
     "@hookform/resolvers": "^3.3.4",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-dialog": "^1.0.5",

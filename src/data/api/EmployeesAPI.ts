@@ -1,4 +1,3 @@
-import { api } from "./config";
 import { supabase } from "./config";
 
 export interface Employee {
@@ -7,6 +6,7 @@ export interface Employee {
   cargo: string;
   telefone: string;
   cpf?: string;
+  email?: string;
 }
 
 export const getEmployeesAPI = async (searchValue = '', page = 1) => {

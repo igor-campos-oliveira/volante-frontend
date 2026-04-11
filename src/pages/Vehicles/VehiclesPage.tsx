@@ -6,6 +6,7 @@ import { DEBOUNCE_TIMEOUT, timestampToLocaleString, USE_QUERY_CONFIGS } from "@/
 import useDebounce from "@/hooks/useDebounce"
 import { isToday } from "@/lib/utils"
 import { useInfiniteQuery } from "@tanstack/react-query"
+import {PaletteIcon, FuelIcon} from "lucide-react"
 
 export default function VehiclesPage() {
   const [searchValue, setSearchValue] = useDebounce({timeout: DEBOUNCE_TIMEOUT})
@@ -30,14 +31,21 @@ export default function VehiclesPage() {
       <p className="text-sm text-muted-foreground">{lastUpdatedAt}</p>
       <SearchPage.SearchBar placeholder="Pesquise os veículos aqui..." onChange={(e) => {setSearchValue(e.target.value)}}/>
       <Card.Container>
+
+        
         {vehiclesData?.map((vehicle: any) => (
           <Card key={vehicle.id}>
             <Card.Header
-              title={(vehicle.brand || vehicle.model) ? `${vehicle.brand} ${vehicle.model}` : 'Sem Veículo'}
-              description={String(vehicle.year).toUpperCase()}
+              title={(vehicle.marca || vehicle.modelo) ? `${vehicle.marca} ${vehicle.modelo}` : 'Sem Veículo'}
+              description={String(vehicle.ano).toUpperCase()}
             >
-            <CarPlate plate={vehicle.plate || ''}/>
+            <CarPlate plate={vehicle.placa || ''}/>
             </Card.Header>
+
+            <Card.Expanded>
+              <p className="flex gap-2 text-sm mb-1"><PaletteIcon size={18}/>{vehicle.cor || 'Cor selecionada'}</p>
+              <p className="flex gap-2 text-sm mb-1"><FuelIcon size={18}/>{vehicle.combustivel || 'Combustível não informado.'}</p>
+            </Card.Expanded>
             {isToday(new Date(vehicle.updatedAt)) && <Card.Badge> </Card.Badge>}
             {/* <Card.Content>
               <p className="flex gap-2 text-sm mb-1"><Palette size={18} className="ml-[1px]"/>{COLORS.find(i => i.value === vehicle.color)?.label || 'Não informada'}</p>

@@ -32,9 +32,9 @@ export default function SearchServiceOrdersPage() {
     hasNextPage,
     dataUpdatedAt,
   } = useInfiniteQuery({
-    queryKey: ['get_service_orders', { searchValue }],
+    queryKey: ['get_service_orders', { searchValue, filter }],
     queryFn: async ({ pageParam = 1 }) =>
-      (await ServiceOrderAPI.get(searchValue, pageParam, filter)).data,
+      ServiceOrderAPI.get(searchValue, pageParam, filter),
     ...USE_QUERY_CONFIGS,
     getNextPageParam: (lastPage) => {
       const nextPage = lastPage.meta.page + 1;
@@ -49,7 +49,7 @@ export default function SearchServiceOrdersPage() {
     });
   };
 
-  const serviceOrdersData = serviceOrders?.pages.flatMap((page) => page.data) || [];
+  const serviceOrdersData = ((serviceOrders?.pages.flatMap((page) => page.data) || []) as unknown) as ServiceOrder[];
   const lastUpdatedAt = 'Última atualização: ' + timestampToLocaleString(dataUpdatedAt);
 
   return (

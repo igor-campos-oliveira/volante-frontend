@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { supabase } from '@/utils/supabase';
+import { supabase, supabaseKey, supabaseSchema } from '@/utils/supabase';
 
 const TIMEOUT = 1000;
 
@@ -10,7 +10,7 @@ export const api = axios.create({
   timeout: TIMEOUT,
 });
 
-export { supabase };
+export { supabase, supabaseSchema };
 
 export const auth = axios.create({
   baseURL: import.meta.env.DEV ? 'https://security-svc.fly.dev/' : 'https://security-svc.fly.dev/',
@@ -22,4 +22,10 @@ export const estimateService = axios.create({
     ? 'https://estimate-svc.fly.dev/v1/estimate/'
     : 'https://estimate-svc.fly.dev/v1/estimate/',
   timeout: TIMEOUT,
+  headers: supabaseKey
+    ? {
+        apikey: supabaseKey,
+        Authorization: `Bearer ${supabaseKey}`,
+      }
+    : undefined,
 });

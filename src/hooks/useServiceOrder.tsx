@@ -30,7 +30,7 @@ interface ServiceOrderStore {
 
 export const useServiceOrderStore = create<ServiceOrderStore>((set: any) => ({
     id: nanoid(),
-    status: STATUS_SERVICE_ORDER.PENDING,
+    status: STATUS_SERVICE_ORDER.EM_ABERTO,
     startAt: '',
     endAt: '',
     note: '',
@@ -48,5 +48,5 @@ export const useServiceOrderStore = create<ServiceOrderStore>((set: any) => ({
     setItems: (service_order_items: ServiceOrderItem[]) => set(() => ({service_order_items})),
     setCarMap: (car_map: ICarSelectionValue) => set(() => ({car_map})),
     setServiceOrder: (serviceOrder) => set(() => ({...serviceOrder})),
-    reset: () => set(() => ({id: nanoid(),status: STATUS_SERVICE_ORDER.PENDING,customer: DEFAULT_CUSTOMER_VALUE,vehicle: DEFAULT_VEHICLE_VALUES,service_order_items: [],car_map: DEFAULT_SELECTION, startAt: null, endAt: null, note: null}))
+    reset: () => set(() => ({id: nanoid(),status: STATUS_SERVICE_ORDER.EM_ABERTO,customer: DEFAULT_CUSTOMER_VALUE,vehicle: DEFAULT_VEHICLE_VALUES,service_order_items: [],car_map: DEFAULT_SELECTION, startAt: null, endAt: null, note: null}))
   }))

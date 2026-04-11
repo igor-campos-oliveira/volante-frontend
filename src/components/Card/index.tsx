@@ -1,5 +1,5 @@
 import { Card as BasicCard, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { ButtonHTMLAttributes, ReactNode } from "react";
+import { ButtonHTMLAttributes, ReactNode, createContext, useContext, useState } from "react";
 import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
@@ -8,11 +8,35 @@ interface IProps extends React.HTMLAttributes<HTMLDivElement>{
     className?: string
 }
 
+const CardContext = createContext<{ isOpen: boolean }>({ isOpen: false });
+const useCard = () => useContext(CardContext);
+
 export default function Card({children, className, ...props}: IProps) {
+  const [isOpen, setIsOpen] = useState(false);
+
   return (
-    <BasicCard {...props} className={`rounded-lg flex flex-col relative active:scale-95 transition hover:border-[--theme-highlight] hover:shadow-lg hover:shadow-[--theme-highlight-100] ${className}`}>
+    <CardContext.Provider value={{ isOpen }}>
+      <BasicCard
+        {...props}
+        onClick={() => setIsOpen(!isOpen)}
+        className={`
+          rounded-lg flex flex-col relative cursor-pointer
+          transition-all duration-300 overflow-hidden
+
+          ${isOpen 
+            ? "shadow-xl border-[--theme-highlight]" 
+            : "active:scale-95"
+          }
+
+          hover:shadow-md hover:-translate-y-1
+
+          ${className}
+        `}
+      >
+        
         {children}
-    </BasicCard>
+      </BasicCard>
+    </CardContext.Provider>
   )
 }
 
@@ -26,7 +50,9 @@ Card.Container = ({children}: {children: ReactNode}) => {
 
 Card.Badge = ({children}: {children?: ReactNode}) => {
     return (
-        <Badge className="bg-[--theme-highlight] shadow-none absolute right-1 top-1 h-3">{children}</Badge>
+        <Badge className="bg-[--theme-highlight] shadow-none absolute right-1 top-1 h-3">
+            {children}
+        </Badge>
     )
 }
 
@@ -37,7 +63,11 @@ Card.Header = ({title, description, avatar, children, fallback}: {title?: string
             {(avatar || fallback) && 
                 <Avatar>
                     {avatar && <AvatarImage src={avatar}/>}
-                    {fallback && <AvatarFallback className="bg-[--theme-highlight-100] text-[--theme-highlight]">{fallback}</AvatarFallback>}
+                    {fallback && (
+                        <AvatarFallback className="bg-[--theme-highlight-100] text-[--theme-highlight]">
+                            {fallback}
+                        </AvatarFallback>
+                    )}
                 </Avatar>
             }
             <div className="flex-1 min-w-[160px]">
@@ -56,6 +86,18 @@ Card.Content = ({children}: {children: ReactNode}) => {
     )
 }
 
+Card.Expanded = ({children}: {children: ReactNode}) => {
+    const { isOpen } = useCard();
+
+    if (!isOpen) return null;
+
+    return (
+        <div className="px-4 pb-4 animate-in fade-in duration-300">
+            {children}
+        </div>
+    )
+}
+
 Card.HeaderActions = ({children, className}: {children: ReactNode, className?: string}) => {
     return (
         <div className={`flex items-center justify-center h-full ${className}`}>
@@ -69,7 +111,11 @@ interface ActionProps extends ButtonHTMLAttributes<HTMLButtonElement>{
 }
 Card.Action = ({icon, className, ...rest}: ActionProps) => {
     return (
-        <button {...rest} className={`p-2 m-0 rounded-full hover:bg-gray-200 transition ${className}`}>
+        <button 
+            {...rest} 
+            onClick={(e) => e.stopPropagation()} 
+            className={`p-2 m-0 rounded-full hover:bg-gray-200 transition ${className}`}
+        >
             {icon}
         </button>
     );

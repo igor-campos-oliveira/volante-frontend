@@ -42,15 +42,14 @@ export type ServiceOrderVehicle = {
 }
 
 export enum STATUS_SERVICE_ORDER {
-    PENDING = "pending",
-    WAITING_APPROVAL = "waiting_approval",
-    SCHEDULED = 'scheduled',
-    APPROVED = "approved",
-    TODO = "todo",
-    DOING = "doing",
-    READY = "ready",
-    DONE = "done",
-    BLOCKED = "blocked",
-    CANCELLED = "cancelled",
-    REJECTED = "rejected"
+    EM_ABERTO = "em_aberto",
+    REJEITADO = "rejeitado",
+    AGENDADO = "agendado",
+    AGUARDANDO_SERVICO = "aguardando_servico",
+    EXECUTANDO = "executando",
+    ENTREGUE = "entregue",
+    BLOQUEADO = "bloqueado",
+    FINALIZADO = "finalizado",
+    AGUARDANDO_PECA = "aguardando_peca",
+    AGUARDANDO_RETIRADA = "aguardando_retirada"
 }
