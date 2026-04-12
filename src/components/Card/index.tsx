@@ -1,34 +1,37 @@
 import { Card as BasicCard, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { ButtonHTMLAttributes, ReactNode, createContext, useContext, useState } from "react";
+import { ButtonHTMLAttributes, ReactNode, createContext, forwardRef, useContext, useState } from "react";
 import { Badge } from "../ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 
 interface IProps extends React.HTMLAttributes<HTMLDivElement>{
     children?: ReactNode,
-    className?: string
+    className?: string,
+    clickable?: boolean
 }
 
 const CardContext = createContext<{ isOpen: boolean }>({ isOpen: false });
 const useCard = () => useContext(CardContext);
 
-export default function Card({children, className, ...props}: IProps) {
+export default function Card({children, className, clickable = false, ...props}: IProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
     <CardContext.Provider value={{ isOpen }}>
       <BasicCard
         {...props}
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={clickable ? () => setIsOpen(!isOpen) : undefined}
         className={`
-          rounded-lg flex flex-col relative cursor-pointer
+          rounded-lg flex flex-col relative
           transition-all duration-300 overflow-hidden
 
-          ${isOpen 
+          ${clickable && isOpen 
             ? "shadow-xl border-[--theme-highlight]" 
-            : "active:scale-95"
+            : clickable
+              ? "cursor-pointer active:scale-95"
+              : ""
           }
 
-          hover:shadow-md hover:-translate-y-1
+          ${clickable ? "hover:shadow-md hover:-translate-y-1" : ""}
 
           ${className}
         `}
@@ -58,21 +61,25 @@ Card.Badge = ({children}: {children?: ReactNode}) => {
 
 Card.Header = ({title, description, avatar, children, fallback}: {title?: string, description?: string, children?: ReactNode, avatar?: string, fallback?: string}) => {
     return (
-        <CardHeader className={'flex flex-row justify-center items-center gap-4 h-21 flex-1 min-w-[160px]'}>
-            {children}
-            {(avatar || fallback) && 
-                <Avatar>
-                    {avatar && <AvatarImage src={avatar}/>}
-                    {fallback && (
-                        <AvatarFallback className="bg-[--theme-highlight-100] text-[--theme-highlight]">
-                            {fallback}
-                        </AvatarFallback>
-                    )}
-                </Avatar>
-            }
-            <div className="flex-1 min-w-[160px]">
-                {title && <CardTitle>{title}</CardTitle>}
-                {description && <CardDescription className="text-md text-gray-500">{description}</CardDescription>}
+        <CardHeader className={'flex flex-row items-start gap-3 min-w-[160px]'}>
+            <div className="flex min-w-0 flex-1 items-center gap-3">
+                {(avatar || fallback) && 
+                    <Avatar>
+                        {avatar && <AvatarImage src={avatar}/>}
+                        {fallback && (
+                            <AvatarFallback className="bg-[--theme-highlight-100] text-[--theme-highlight]">
+                                {fallback}
+                            </AvatarFallback>
+                        )}
+                    </Avatar>
+                }
+                <div className="flex-1 min-w-[160px]">
+                    {title && <CardTitle>{title}</CardTitle>}
+                    {description && <CardDescription className="text-md text-gray-500">{description}</CardDescription>}
+                </div>
+            </div>
+            <div className="ml-auto flex items-center justify-end">
+                {children}
             </div>
         </CardHeader>
     )
@@ -100,7 +107,7 @@ Card.Expanded = ({children}: {children: ReactNode}) => {
 
 Card.HeaderActions = ({children, className}: {children: ReactNode, className?: string}) => {
     return (
-        <div className={`flex items-center justify-center h-full ${className}`}>
+        <div className={`flex items-center justify-end h-full ${className}`}>
             {children}
         </div>
     )
@@ -109,14 +116,23 @@ Card.HeaderActions = ({children, className}: {children: ReactNode, className?: s
 interface ActionProps extends ButtonHTMLAttributes<HTMLButtonElement>{
     icon: ReactNode,
 }
-Card.Action = ({icon, className, ...rest}: ActionProps) => {
+Card.Action = forwardRef<HTMLButtonElement, ActionProps>(({icon, className, type, ...rest}, ref) => {
+    const handleClick: React.MouseEventHandler<HTMLButtonElement> = (e) => {
+        rest.onClick?.(e);
+        e.stopPropagation();
+    };
+
     return (
         <button 
+            ref={ref}
             {...rest} 
-            onClick={(e) => e.stopPropagation()} 
+            type={type ?? "button"}
+            onClick={handleClick}
             className={`p-2 m-0 rounded-full hover:bg-gray-200 transition ${className}`}
         >
             {icon}
         </button>
     );
-}
+});
+
+Card.Action.displayName = "CardAction";

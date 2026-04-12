@@ -6,7 +6,7 @@ import Menu from "./components/Menu/Menu";
 import { ROUTER_PATHS } from "./routes/routes";
 import { Car, FilePlus, FolderSearch, Home, User } from "lucide-react";
 import VehiclesPage from "./pages/Vehicles/VehiclesPage";
-import CustomersPage from "./pages/Customers/CustomersPage";
+import CustomersPage from "./pages/Customers/CustomersPageWithModal";
 // import CatalogPage from "./pages/Catalog/CatalogPage";
 // import SquadPage from "./pages/Squad/SquadPage";
 // import SupplierPage from "./pages/Supplier/SupplierPage";
@@ -39,7 +39,11 @@ const INTERNAL_ROUTES = [
 ];
 
 const ProtectedLayout = () => {
-  const { isAuthenticated } = useAuthContext();
+  const { isAuthenticated, isLoading } = useAuthContext();
+
+  if (isLoading) {
+    return <div className="flex flex-1 items-center justify-center text-sm text-zinc-500">Carregando...</div>;
+  }
 
   if (!isAuthenticated) {
     return <LoginPage />;

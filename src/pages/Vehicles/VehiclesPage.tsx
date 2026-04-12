@@ -34,7 +34,7 @@ export default function VehiclesPage() {
 
         
         {vehiclesData?.map((vehicle: any) => (
-          <Card key={vehicle.id}>
+          <Card key={vehicle.id} clickable>
             <Card.Header
               title={(vehicle.marca || vehicle.modelo) ? `${vehicle.marca} ${vehicle.modelo}` : 'Sem Veículo'}
               description={String(vehicle.ano).toUpperCase()}

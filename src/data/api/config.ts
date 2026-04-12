@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { supabase, supabaseKey, supabaseSchema } from '@/utils/supabase';
+import { InternalAxiosRequestConfig } from 'axios';
 
 const TIMEOUT = 1000;
 
@@ -12,20 +13,27 @@ export const api = axios.create({
 
 export { supabase, supabaseSchema };
 
-export const auth = axios.create({
-  baseURL: import.meta.env.DEV ? 'https://security-svc.fly.dev/' : 'https://security-svc.fly.dev/',
-  timeout: TIMEOUT,
-});
-
 export const estimateService = axios.create({
   baseURL: import.meta.env.DEV
     ? 'https://estimate-svc.fly.dev/v1/estimate/'
     : 'https://estimate-svc.fly.dev/v1/estimate/',
   timeout: TIMEOUT,
-  headers: supabaseKey
-    ? {
-        apikey: supabaseKey,
-        Authorization: `Bearer ${supabaseKey}`,
-      }
-    : undefined,
 });
+
+const appendAuthHeaders = async (config: InternalAxiosRequestConfig) => {
+  const { data } = await supabase.auth.getSession();
+  const accessToken = data.session?.access_token;
+
+  if (supabaseKey && !config.headers.apikey) {
+    config.headers.apikey = supabaseKey;
+  }
+
+  if (accessToken) {
+    config.headers.Authorization = `Bearer ${accessToken}`;
+  }
+
+  return config;
+};
+
+api.interceptors.request.use(appendAuthHeaders);
+estimateService.interceptors.request.use(appendAuthHeaders);

@@ -82,12 +82,18 @@ export async function updateEmployee(id: string, costumer: Partial<Costumer>) {
 // DELETE - Deletar funcionário
 export async function deleteCostumer(id: string) {
   try {
-    const { error } = await supabase
+    const { error, count } = await supabase
       .from('clientes')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('id', id)
+      .select('id');
 
     if (error) throw error
+    if (!count) {
+      throw new Error(
+        'Nenhum cliente foi removido. Verifique se o ID existe e se ha politica DELETE no Supabase (RLS).',
+      );
+    }
   } catch (error) {
     console.error(`Erro ao deletar cliente ${id}:`, error)
     throw error
