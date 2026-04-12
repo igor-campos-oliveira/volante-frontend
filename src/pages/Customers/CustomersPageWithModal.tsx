@@ -154,7 +154,10 @@ export default function CustomersPage() {
           </div>
         )}
         {customersData.map((customer: Costumer) => (
-          <Card key={customer.id}>
+          <Card
+            key={customer.id}
+            className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-12px_rgba(139,92,246,0.55)]"
+          >
             {isToday(new Date(customer.updatedAt as string)) && (
               <Card.Badge> </Card.Badge>
             )}

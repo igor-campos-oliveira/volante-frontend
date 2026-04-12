@@ -6,7 +6,6 @@ export interface Employee {
   cargo: string;
   telefone: string;
   cpf?: string;
-  email?: string;
 }
 
 export const getEmployeesAPI = async (searchValue = '', page = 1) => {
@@ -18,7 +17,9 @@ export const getEmployeesAPI = async (searchValue = '', page = 1) => {
     let query = supabase.from('funcionarios').select('*', { count: 'exact' });
 
     if (searchValue.trim()) {
-      query = query.or(`nome.ilike.%${searchValue}%,cargo.ilike.%${searchValue}%,telefone.ilike.%${searchValue}% cpf.ilike.%${searchValue}%`);
+      query = query.or(
+        `nome.ilike.%${searchValue}%,cargo.ilike.%${searchValue}%,telefone.ilike.%${searchValue}%,cpf.ilike.%${searchValue}%`
+      );
     }
 
     const { data, count, error } = await query
