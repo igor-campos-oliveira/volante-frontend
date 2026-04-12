@@ -43,7 +43,7 @@ const Menu = ({links}: MenuProps) => {
 
     return (
         <nav className={cn(
-          "select-none flex items-center gap-4 justify-center px-4 pt-4 md:gap-3 md:flex-col md:py-6 md:px-3 md:items-stretch md:overflow-hidden md:transition-[width] md:duration-300",
+          "select-none flex items-center gap-4 justify-center px-4 pt-4 md:gap-3 md:flex-col md:py-6 md:px-3 md:items-stretch md:overflow-hidden md:transition-[width] md:duration-500 md:[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
           isCollapsed ? "md:w-[92px]" : "md:w-[244px]"
         )}>
             <div className="hidden md:flex justify-end">
@@ -57,7 +57,14 @@ const Menu = ({links}: MenuProps) => {
                 {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
               </button>
             </div>
-            <div className={cn("flex items-center md:justify-center", isCollapsed && "md:hidden")}>
+            <div
+              className={cn(
+                "flex items-center md:justify-center md:overflow-hidden md:transition-[max-height,opacity,transform] md:duration-500 md:[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
+                isCollapsed
+                  ? "md:max-h-0 md:opacity-0 md:-translate-y-2 md:delay-0"
+                  : "md:max-h-16 md:opacity-100 md:translate-y-0 md:delay-100"
+              )}
+            >
               <Logo/>
             </div>
             <ol className="flex-1 px-4 flex gap-1 items-center md:flex-col md:px-0">
@@ -69,7 +76,18 @@ const Menu = ({links}: MenuProps) => {
                       title={label}
                     >
                         {icon}
-                        {!isCollapsed && label}
+                        <span
+                          className={cn(
+                            "hidden md:inline-block md:overflow-hidden md:whitespace-nowrap md:transition-[max-width,opacity,transform] md:duration-500 md:[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
+                            isCollapsed
+                              ? "md:max-w-0 md:opacity-0 md:-translate-x-2 md:delay-0"
+                              : "md:max-w-[140px] md:opacity-100 md:translate-x-0 md:delay-75"
+                          )}
+                          aria-hidden={isCollapsed}
+                        >
+                          {label}
+                        </span>
+                        <span className="md:hidden">{label}</span>
                     </NavLink>
                 ))}
             </ol>
@@ -79,11 +97,16 @@ const Menu = ({links}: MenuProps) => {
                   {avatarFallback}
                 </AvatarFallback>
               </Avatar>
-              {!isCollapsed && (
-                <p className="max-w-full truncate text-center text-xs text-zinc-500" title={userEmail ?? ""}>
-                  {userEmail ?? "sem-email@informado.com"}
-                </p>
-              )}
+              <p
+                className={cn(
+                  "max-w-full overflow-hidden whitespace-nowrap text-center text-xs text-zinc-500 transition-[max-height,opacity,transform] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
+                  isCollapsed ? "max-h-0 opacity-0 -translate-y-2 delay-0" : "max-h-8 opacity-100 translate-y-0 delay-150"
+                )}
+                title={userEmail ?? ""}
+                aria-hidden={isCollapsed}
+              >
+                {userEmail ?? "sem-email@informado.com"}
+              </p>
             </div>
             <ConfirmButton 
                 variant={"link"}
@@ -92,7 +115,18 @@ const Menu = ({links}: MenuProps) => {
                 onConfirm={() => logout()}
             >
                 <LogOut size={20} className={cn(!isCollapsed && "pr-2")}/>
-                {!isCollapsed && "Sair"}
+                <span
+                  className={cn(
+                    "hidden md:inline-block md:overflow-hidden md:whitespace-nowrap md:transition-[max-width,opacity,transform] md:duration-500 md:[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
+                    isCollapsed
+                      ? "md:max-w-0 md:opacity-0 md:-translate-x-2 md:delay-0"
+                      : "md:max-w-16 md:opacity-100 md:translate-x-0 md:delay-75"
+                  )}
+                  aria-hidden={isCollapsed}
+                >
+                  Sair
+                </span>
+                <span className="md:hidden">Sair</span>
             </ConfirmButton>
         </nav>
     );
