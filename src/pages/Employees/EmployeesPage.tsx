@@ -15,6 +15,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   deleteEmployee,
   Employee,
@@ -31,13 +32,19 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { FileTextIcon, MoreVertical, Pencil, Phone, Plus, Trash2 } from "lucide-react";
+import {
+  FileTextIcon,
+  MoreVertical,
+  Pencil,
+  Phone,
+  Plus,
+  Trash2,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import EmployeeUpsertModal from "./EmployeeUpsertModal";
 
-const digitsOnly = (value?: string | null) =>
-  String(value ?? "").replace(/\D/g, "");
+const digitsOnly = (value?: string | null) => String(value ?? "").replace(/\D/g, "");
 
 const formatCPF = (value?: string | null) => {
   const digits = digitsOnly(value);
@@ -67,6 +74,7 @@ export default function EmployeesPage() {
 
   const {
     data: employees,
+    isLoading,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
@@ -150,7 +158,15 @@ export default function EmployeesPage() {
       />
 
       <Card.Container>
-        {employeesData.length === 0 && (
+        {isLoading &&
+          Array.from({ length: 8 }).map((_, index) => (
+            <Skeleton
+              key={`employees-skeleton-${index}`}
+              className="h-[172px] w-full rounded-lg"
+            />
+          ))}
+
+        {!isLoading && employeesData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum funcionario encontrado.
           </div>

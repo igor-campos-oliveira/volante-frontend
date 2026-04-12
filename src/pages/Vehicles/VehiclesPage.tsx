@@ -2,6 +2,7 @@ import Card from "@/components/Card";
 import SearchPage from "@/components/SearchPage";
 import CarPlate from "@/components/ui/plate";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
   DialogContent,
@@ -63,6 +64,7 @@ export default function VehiclesPage() {
 
   const {
     data: vehicles,
+    isLoading,
     isFetchingNextPage,
     hasNextPage,
     fetchNextPage,
@@ -145,7 +147,15 @@ export default function VehiclesPage() {
         }
       />
       <Card.Container>
-        {vehiclesData.length === 0 && (
+        {isLoading &&
+          Array.from({ length: 8 }).map((_, index) => (
+            <Skeleton
+              key={`vehicles-skeleton-${index}`}
+              className="h-[170px] w-full rounded-lg"
+            />
+          ))}
+
+        {!isLoading && vehiclesData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum veiculo encontrado.
           </div>
@@ -294,4 +304,3 @@ export default function VehiclesPage() {
     </SearchPage>
   );
 }
-

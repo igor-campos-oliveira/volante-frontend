@@ -13,6 +13,7 @@ import { ServiceOrderPDF } from '@/components/PDF/ServiceOrderPDF';
 import { Modal } from '@/components/Modal/Modal';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
 import { FormProvider, useForm } from 'react-hook-form';
 import { DEFAULT_CUSTOMER_VALUE } from '@/components/FormSheet/Customer/schema';
 import { DEFAULT_VEHICLE_VALUES } from '@/components/FormSheet/Vehicle/schema';
@@ -43,7 +44,7 @@ function ServiceOrderPage() {
   const methods = useForm<ServiceOrder>({ defaultValues: DEFAULT_FORM_VALUES });
   const queryClient = useQueryClient();
 
-  const { data: serviceImages } = useQuery({
+  const { data: serviceImages, isLoading: isLoadingImages } = useQuery({
     queryKey: ['service-images', uuid],
     queryFn: () => ServiceOrderAPI.getImages(uuid || ''),
     refetchOnMount: true,
@@ -162,17 +163,25 @@ function ServiceOrderPage() {
             </section>
             <p className="text-md font-bold pl-4">Imagens do Veículo</p>
             <Card className="p-4 rounded-3xl">
-              <FileSelect
-                label="Imagens"
-                files={serviceImages?.data}
-                onChange={(files) =>
-                  ServiceOrderAPI.uploadVehicleImage({
-                    imageFile: files[0],
-                    orderId: uuid,
-                    description: '',
-                  })
-                }
-              />
+              {isLoadingImages ? (
+                <div className="space-y-3">
+                  <Skeleton className="h-5 w-40" />
+                  <Skeleton className="h-12 w-full" />
+                  <Skeleton className="h-12 w-full" />
+                </div>
+              ) : (
+                <FileSelect
+                  label="Imagens"
+                  files={serviceImages?.data}
+                  onChange={(files) =>
+                    ServiceOrderAPI.uploadVehicleImage({
+                      imageFile: files[0],
+                      orderId: uuid,
+                      description: '',
+                    })
+                  }
+                />
+              )}
               {/* <code>{JSON.stringify(serviceImages)}</code> */}
             </Card>
           </div>

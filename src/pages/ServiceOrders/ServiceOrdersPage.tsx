@@ -1,38 +1,40 @@
-import Card from '@/components/Card';
-import SearchPage from '@/components/SearchPage';
+import Card from "@/components/Card";
+import SearchPage from "@/components/SearchPage";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   DEBOUNCE_TIMEOUT,
   SO_STATUS_LIST,
   timestampToLocaleString,
   USE_QUERY_CONFIGS,
-} from '@/data/constants/utils';
-import useDebounce from '@/hooks/useDebounce';
-import { isToday } from '@/lib/utils';
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { ServiceOrder } from '../ServiceOrder/types';
-import { useNavigate } from 'react-router-dom';
-import { ROUTER_PATHS } from '@/routes/routes';
-import { useServiceOrderStore } from '@/hooks/useServiceOrder';
-import StatusDropDown from '@/components/BadgeDropDown/BadgeDropDown';
-import CarPlate from '@/components/ui/plate';
-import SelectOption from '@/components/ui/selectOptions';
-import { useState } from 'react';
-import ServiceOrderAPI from '@/data/api/ServiceOrderAPI';
+} from "@/data/constants/utils";
+import useDebounce from "@/hooks/useDebounce";
+import { isToday } from "@/lib/utils";
+import { useInfiniteQuery } from "@tanstack/react-query";
+import { ServiceOrder } from "../ServiceOrder/types";
+import { useNavigate } from "react-router-dom";
+import { ROUTER_PATHS } from "@/routes/routes";
+import { useServiceOrderStore } from "@/hooks/useServiceOrder";
+import StatusDropDown from "@/components/BadgeDropDown/BadgeDropDown";
+import CarPlate from "@/components/ui/plate";
+import SelectOption from "@/components/ui/selectOptions";
+import { useState } from "react";
+import ServiceOrderAPI from "@/data/api/ServiceOrderAPI";
 
 export default function SearchServiceOrdersPage() {
   const navigation = useNavigate();
   const { setServiceOrder } = useServiceOrderStore();
   const [searchValue, setSearchValue] = useDebounce({ timeout: DEBOUNCE_TIMEOUT });
-  const [filter, setFilter] = useState<'customer' | 'vehicle'>('customer');
+  const [filter, setFilter] = useState<"customer" | "vehicle">("customer");
 
   const {
     data: serviceOrders,
+    isLoading,
     fetchNextPage,
     isFetchingNextPage,
     hasNextPage,
     dataUpdatedAt,
   } = useInfiniteQuery({
-    queryKey: ['get_service_orders', { searchValue, filter }],
+    queryKey: ["get_service_orders", { searchValue, filter }],
     queryFn: async ({ pageParam = 1 }) =>
       ServiceOrderAPI.get(searchValue, pageParam, filter),
     ...USE_QUERY_CONFIGS,
@@ -49,8 +51,10 @@ export default function SearchServiceOrdersPage() {
     });
   };
 
-  const serviceOrdersData = ((serviceOrders?.pages.flatMap((page) => page.data) || []) as unknown) as ServiceOrder[];
-  const lastUpdatedAt = 'Última atualização: ' + timestampToLocaleString(dataUpdatedAt);
+  const serviceOrdersData = ((serviceOrders?.pages.flatMap((page) => page.data) ||
+    []) as unknown) as ServiceOrder[];
+  const lastUpdatedAt =
+    "Última atualização: " + timestampToLocaleString(dataUpdatedAt);
 
   return (
     <SearchPage>
@@ -60,24 +64,40 @@ export default function SearchServiceOrdersPage() {
         placeholder="Pesquise seus orçamentos aqui..."
         onChange={(e) => {
           setSearchValue(e.target.value);
-        }}>
+        }}
+      >
         <SelectOption
           className="h-[50px] w-[120px] flex-grow-0 mr-2"
           containerFlex="0"
           value={filter}
           onChange={setFilter}
           options={[
-            { label: 'Cliente', value: 'customer' },
-            { label: 'Veículo', value: 'vehicle' },
+            { label: "Cliente", value: "customer" },
+            { label: "Veículo", value: "vehicle" },
           ]}
         />
       </SearchPage.SearchBar>
       <Card.Container>
+        {isLoading &&
+          Array.from({ length: 8 }).map((_, index) => (
+            <Skeleton
+              key={`service-orders-skeleton-${index}`}
+              className="h-[142px] w-full rounded-lg"
+            />
+          ))}
+
+        {!isLoading && serviceOrdersData.length === 0 && (
+          <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+            Nenhum orçamento encontrado.
+          </div>
+        )}
+
         {serviceOrdersData.map((serviceOrder: ServiceOrder) => (
           <Card
             className="capitalize"
             key={serviceOrder?.uuid}
-            onClick={() => handleCardClick(serviceOrder)}>
+            onClick={() => handleCardClick(serviceOrder)}
+          >
             {serviceOrder?.updatedAt && isToday(new Date(serviceOrder?.updatedAt)) && (
               <Card.Badge></Card.Badge>
             )}
@@ -85,13 +105,13 @@ export default function SearchServiceOrdersPage() {
               title={
                 serviceOrder?.vehicle?.brand || serviceOrder?.vehicle?.model
                   ? `${serviceOrder?.vehicle?.brand} ${serviceOrder?.vehicle?.model}`
-                  : 'Sem Veículo'
+                  : "Sem Veículo"
               }
-              description={serviceOrder?.customer?.name || 'Cliente não identificado'}
+              description={serviceOrder?.customer?.name || "Cliente não identificado"}
             />
             <Card.Content>
               <div className="flex justify-between">
-                <CarPlate plate={serviceOrder?.vehicle?.plate || ''} />
+                <CarPlate plate={serviceOrder?.vehicle?.plate || ""} />
                 <StatusDropDown
                   value={serviceOrder.status}
                   options={SO_STATUS_LIST}
@@ -106,7 +126,8 @@ export default function SearchServiceOrdersPage() {
       <SearchPage.LoadMore
         visible={hasNextPage}
         loading={isFetchingNextPage}
-        onClick={() => fetchNextPage()}>
+        onClick={() => fetchNextPage()}
+      >
         Ver mais
       </SearchPage.LoadMore>
     </SearchPage>

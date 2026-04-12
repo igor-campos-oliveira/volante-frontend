@@ -3,7 +3,7 @@ import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
 import { cn } from "@/lib/utils"
-import { Loader2Icon } from "lucide-react"
+import { Spinner } from "@/components/ui/spinner"
 
 const buttonVariants = cva(
   "inline-flex transition-all items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50",
@@ -54,7 +54,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={props.disabled || loading || false}
         {...props}
       >
-        {loading && <Loader2Icon className="animate-spin mr-3" size={18} />}
+        {loading && <Spinner className="mr-3" size={18} />}
         {children}
       </Comp>
     )

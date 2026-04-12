@@ -1,6 +1,7 @@
 import Card from "@/components/Card";
 import SearchPage from "@/components/SearchPage";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Costumer,
   deleteCostumer,
@@ -42,19 +43,8 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
-import { Skeleton } from "@heroui/react";
 import { toast } from "sonner";
 import CustomerUpsertModal from "./CustomerUpsertModal";
-
-export function Grid() {
-  return (
-    <div className="grid w-full max-w-xl grid-cols-3 gap-4">
-      <Skeleton className="h-24 rounded-xl" />
-      <Skeleton className="h-24 rounded-xl" />
-      <Skeleton className="h-24 rounded-xl" />
-    </div>
-  );
-}
 
 export default function CustomersPage() {
   const queryClient = useQueryClient();
@@ -67,6 +57,7 @@ export default function CustomersPage() {
 
   const {
     data: customers,
+    isLoading,
     fetchNextPage,
     isFetchingNextPage,
     hasNextPage,
@@ -148,7 +139,15 @@ export default function CustomersPage() {
         }
       />
       <Card.Container>
-        {customersData.length === 0 && (
+        {isLoading &&
+          Array.from({ length: 8 }).map((_, index) => (
+            <Skeleton
+              key={`customers-modal-skeleton-${index}`}
+              className="h-[190px] w-full rounded-lg"
+            />
+          ))}
+
+        {!isLoading && customersData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum cliente encontrado.
           </div>
