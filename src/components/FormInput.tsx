@@ -1,6 +1,7 @@
-import { ControllerRenderProps, UseFormReturn } from "react-hook-form";
+import { ControllerRenderProps, RegisterOptions, UseFormReturn } from "react-hook-form";
 import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
-import { ReactElement } from "react";
+import { cloneElement, ReactElement } from "react";
+import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
 
 interface FormInputProps{
@@ -10,20 +11,48 @@ interface FormInputProps{
     className?: string,
     type?: string,
     form: UseFormReturn<any>
+    rules?: RegisterOptions
+    showValidationColors?: boolean
     children?: (field:  ControllerRenderProps<any, string>) => ReactElement<any>
 }
 
-const FormInput = ({name, label, form, children, className}: FormInputProps) => {
+const FormInput = ({name, label, form, children, className, rules, showValidationColors = false}: FormInputProps) => {
     return ( 
-    <FormField name={name} control={form.control} render={({field}) => (
+    <FormField name={name} control={form.control} rules={rules} render={({field, fieldState}) => {
+        const hasValue = typeof field.value === "string"
+          ? field.value.trim().length > 0
+          : field.value !== undefined && field.value !== null && field.value !== "";
+
+        const showSuccessState = showValidationColors && hasValue && !fieldState.invalid;
+        const showErrorState = showValidationColors && hasValue && fieldState.invalid;
+
+        const inputStatusClassName = cn(
+          showSuccessState && "border-green-500 focus-visible:ring-green-500",
+          showErrorState && "border-red-500 focus-visible:ring-red-500"
+        );
+
+        const labelStatusClassName = cn(
+          showSuccessState && "text-green-600",
+          showErrorState && "text-red-600"
+        );
+
+        const childElement = children && children(field);
+        const childWithValidationStyle = childElement
+          ? cloneElement(childElement, {
+              className: cn(childElement.props.className, inputStatusClassName),
+            })
+          : null;
+
+        return (
         <FormItem className={className}>
-            {label && <FormLabel>{label}</FormLabel>}
+            {label && <FormLabel className={labelStatusClassName}>{label}</FormLabel>}
             <FormControl>
-                {children && children(field)}
+                {childWithValidationStyle}
             </FormControl>
             <FormMessage/>
         </FormItem>
-    )}/>
+      )
+    }}/>
     );
 }
 

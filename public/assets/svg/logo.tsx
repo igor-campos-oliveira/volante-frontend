@@ -2,12 +2,14 @@ interface LogoProps {
   width?: number,  
   height?: number,
   color?: string
+  className?: string
 }
 
-function Logo({height = 60, width = 110, color = "#000"}: LogoProps) {
+function Logo({height = 60, width = 110, color = "#000", className}: LogoProps) {
     return (
       <svg
       xmlns="http://www.w3.org/2000/svg"
+      className={className}
       width={width}
       height={height}
       viewBox="0 0 1299 227"
