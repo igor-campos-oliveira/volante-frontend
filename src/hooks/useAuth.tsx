@@ -10,6 +10,7 @@ interface IAuthContext {
   signup: (email: string, password: string) => Promise<IAuthResult>;
   logout: () => Promise<void>;
   credentials: ICredential | null;
+  userEmail: string | null;
 }
 
 export const AuthContext = createContext<IAuthContext>({
@@ -19,6 +20,7 @@ export const AuthContext = createContext<IAuthContext>({
   signup: async () => ({ data: null }),
   logout: async () => {},
   credentials: null,
+  userEmail: null,
 });
 
 const AuthProvider = ({ children }: any) => {
@@ -26,6 +28,7 @@ const AuthProvider = ({ children }: any) => {
   const [isAuthenticated, setAuthenticated] = useState(false);
   const [isLoading, setLoading] = useState(true);
   const [credentials, setCredentials] = useState<ICredential | null>(null);
+  const [userEmail, setUserEmail] = useState<string | null>(null);
 
   useEffect(() => {
     let isMounted = true;
@@ -40,9 +43,11 @@ const AuthProvider = ({ children }: any) => {
           refresh_token: data.session.refresh_token,
           expiration: data.session.expires_at ?? Math.floor(Date.now() / 1000),
         });
+        setUserEmail(data.session.user?.email ?? null);
         setAuthenticated(true);
       } else {
         setCredentials(null);
+        setUserEmail(null);
         setAuthenticated(false);
       }
       setLoading(false);
@@ -57,9 +62,11 @@ const AuthProvider = ({ children }: any) => {
           refresh_token: session.refresh_token,
           expiration: session.expires_at ?? Math.floor(Date.now() / 1000),
         });
+        setUserEmail(session.user?.email ?? null);
         setAuthenticated(true);
       } else {
         setCredentials(null);
+        setUserEmail(null);
         setAuthenticated(false);
       }
       setLoading(false);
@@ -79,6 +86,7 @@ const AuthProvider = ({ children }: any) => {
       if (response.data?.access_token) {
         queryClient.resetQueries();
         setCredentials(response.data);
+        setUserEmail(email);
         setAuthenticated(true);
       }
 
@@ -86,6 +94,7 @@ const AuthProvider = ({ children }: any) => {
     } catch (error) {
       setAuthenticated(false);
       setCredentials(null);
+      setUserEmail(null);
       throw error;
     } finally {
       setLoading(false);
@@ -100,6 +109,7 @@ const AuthProvider = ({ children }: any) => {
       if (response.data?.access_token) {
         queryClient.resetQueries();
         setCredentials(response.data);
+        setUserEmail(email);
         setAuthenticated(true);
       }
 
@@ -115,6 +125,7 @@ const AuthProvider = ({ children }: any) => {
       await supabase.auth.signOut();
     } finally {
       setCredentials(null);
+      setUserEmail(null);
       setAuthenticated(false);
       setLoading(false);
       queryClient.clear();
@@ -122,7 +133,7 @@ const AuthProvider = ({ children }: any) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, signup, logout, credentials }}>
+    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, signup, logout, credentials, userEmail }}>
       {children}
     </AuthContext.Provider>
   );
