@@ -48,11 +48,11 @@ export const CAR_BRANDS = [
 
 
 export const CAR_FUELS = [
-  { value: 'gasoline', label: 'Gasolina', color: 'bg-amber-500' },
-  { value: 'ethanol', label: 'Etanol', color: 'bg-green-300' },
+  { value: 'gasolina', label: 'Gasolina', color: 'bg-amber-500' },
+  { value: 'etanol', label: 'Etanol', color: 'bg-green-300' },
   { value: 'diesel', label: 'Diesel', color: 'bg-gray-500' },
   { value: 'flex', label: 'Flex', color: 'bg-blue-300' },
-  { value: 'electric', label: 'Elétrico', color: 'bg-teal-400' },
-  { value: 'hybrid', label: 'Híbrido', color: 'bg-purple-300' },
-  { value: 'natural_gas', label: 'GNV', color: 'bg-yellow-400' }
+  { value: 'eletrico', label: 'Elétrico', color: 'bg-teal-400' },
+  { value: 'hibrido', label: 'Híbrido', color: 'bg-purple-300' },
+  { value: 'gnv', label: 'GNV', color: 'bg-yellow-400' }
 ];

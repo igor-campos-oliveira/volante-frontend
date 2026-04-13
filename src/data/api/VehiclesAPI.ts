@@ -27,6 +27,18 @@ interface VehicleRow {
   data_criacao?: string;
 }
 
+const sanitizeVehiclePayload = (vehicle: Partial<Vehicle>) => ({
+  id: vehicle.id,
+  placa: vehicle.placa,
+  cor: vehicle.cor,
+  marca: vehicle.marca,
+  modelo: vehicle.modelo,
+  ano: vehicle.ano,
+  combustivel: vehicle.combustivel,
+  km: vehicle.km,
+  data_criacao: vehicle.data_criacao,
+});
+
 export const getVehiclesAPI = async (searchValue = "", page = 1) => {
   try {
     const pageSize = 10;
@@ -72,9 +84,10 @@ export const getVehiclesAPI = async (searchValue = "", page = 1) => {
 // POST - Criar novo veiculo
 export async function createVehicle(vehicle: Partial<Vehicle>) {
   try {
+    const payload = sanitizeVehiclePayload(vehicle);
     const { data, error } = await supabase
       .from("carros")
-      .insert([vehicle])
+      .insert([payload])
       .select();
 
     if (error) throw error;
@@ -88,9 +101,10 @@ export async function createVehicle(vehicle: Partial<Vehicle>) {
 // PUT - Atualizar veiculo
 export async function updateVehicle(id: string | number, vehicle: Partial<Vehicle>) {
   try {
+    const payload = sanitizeVehiclePayload(vehicle);
     const { data, error } = await supabase
       .from("carros")
-      .update(vehicle)
+      .update(payload)
       .eq("id", id)
       .select();
 

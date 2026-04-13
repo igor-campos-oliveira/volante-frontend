@@ -5,6 +5,7 @@ import { CustomerSchema } from "@/components/FormSheet/Customer/schema"
 import { VehicleSchema } from "@/components/FormSheet/Vehicle/schema"
 
 export type ServiceOrder = {
+    id?: number | string,
     uuid: string
     status: STATUS_SERVICE_ORDER,
     createdAt: string,

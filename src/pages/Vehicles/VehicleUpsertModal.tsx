@@ -73,44 +73,6 @@ const resolveOptionValue = (
   return found?.value ?? "";
 };
 
-const FUEL_ALIASES: Record<string, string[]> = {
-  gasoline: ["gasoline", "gasolina"],
-  gasolina: ["gasolina", "gasoline"],
-  ethanol: ["ethanol", "etanol"],
-  etanol: ["etanol", "ethanol"],
-  diesel: ["diesel"],
-  flex: ["flex"],
-  electric: ["electric", "eletrico"],
-  eletrico: ["eletrico", "electric"],
-  hybrid: ["hybrid", "hibrido"],
-  hibrido: ["hibrido", "hybrid"],
-  natural_gas: ["natural_gas", "gnv"],
-  gnv: ["gnv", "natural_gas"],
-};
-
-const unique = <T,>(arr: T[]) => Array.from(new Set(arr));
-
-const getFuelCandidates = (fuel?: string) => {
-  const normalized = normalizeText(fuel);
-  if (!normalized) {
-    return [undefined] as Array<string | undefined>;
-  }
-
-  const aliases = FUEL_ALIASES[normalized] ?? [fuel as string];
-  return unique([fuel, ...aliases].filter(Boolean)) as string[];
-};
-
-const isEnumFuelError = (error: unknown) => {
-  const message =
-    error instanceof Error
-      ? error.message
-      : typeof error === "object" && error !== null && "message" in error
-        ? String((error as { message: unknown }).message)
-        : "";
-
-  return normalizeText(message).includes("enum combustivel");
-};
-
 const isDuplicatePlateError = (error: unknown) => {
   const message =
     error instanceof Error
@@ -164,38 +126,14 @@ export default function VehicleUpsertModal({
       marca: values.marca || undefined,
       modelo: values.modelo.trim() || undefined,
       ano: yearNumber ?? undefined,
+      combustivel: values.combustivel || undefined,
     };
 
     try {
-      const fuelCandidates = getFuelCandidates(values.combustivel);
-      let saved = false;
-      let lastError: unknown = null;
-
-      for (const fuelCandidate of fuelCandidates) {
-        const payload: Partial<Vehicle> = {
-          ...basePayload,
-          combustivel: fuelCandidate,
-        };
-
-        try {
-          if (vehicle?.id) {
-            await updateVehicle(vehicle.id, payload);
-          } else {
-            await createVehicle(payload);
-          }
-
-          saved = true;
-          break;
-        } catch (error) {
-          lastError = error;
-          if (!isEnumFuelError(error)) {
-            break;
-          }
-        }
-      }
-
-      if (!saved && lastError) {
-        throw lastError;
+      if (vehicle?.id) {
+        await updateVehicle(vehicle.id, basePayload);
+      } else {
+        await createVehicle(basePayload);
       }
 
       await queryClient.invalidateQueries({ queryKey: ["get_all_vehicles"] });
