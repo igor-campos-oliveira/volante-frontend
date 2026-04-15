@@ -49,6 +49,13 @@ const normalizeText = (value: string) =>
     .toLowerCase();
 
 const normalizeValueKey = (value: string) => normalizeText(value).replace(/\s+/g, "_");
+const getGrossProfitTextClass = (grossProfit: number) => {
+  if (grossProfit <= 0) {
+    return "text-red-600";
+  }
+
+  return "text-green-600";
+};
 
 export default function CatalogServicesPage() {
   const queryClient = useQueryClient();
@@ -215,7 +222,7 @@ export default function CatalogServicesPage() {
           return (
             <article
               key={service.id}
-              className="rounded-xl border bg-white p-4 shadow-sm transition-colors hover:bg-zinc-50"
+              className="rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-12px_rgba(139,92,246,0.55)]"
             >
               <div className="flex flex-wrap items-center gap-3 md:flex-nowrap">
                 <label className="flex items-center gap-2 text-sm text-zinc-600">
@@ -266,6 +273,9 @@ export default function CatalogServicesPage() {
                   </p>
                   <p className="text-base font-semibold text-zinc-900">
                     Valor: {currencyFormat(service.value, "currency")}
+                  </p>
+                  <p className={`text-sm font-medium ${getGrossProfitTextClass(service.grossProfit)}`}>
+                    Lucro bruto: {currencyFormat(service.grossProfit, "currency")}
                   </p>
                 </div>
 

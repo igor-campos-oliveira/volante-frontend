@@ -15,8 +15,9 @@ import {
   updateCatalogServiceAPI,
 } from "@/data/api/CatalogServicesAPI";
 import { useQueryClient } from "@tanstack/react-query";
+import { Check } from "lucide-react";
 import { Controller, useForm } from "react-hook-form";
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { toast } from "sonner";
 
 interface ServiceTypeOption {
@@ -64,6 +65,9 @@ const parseCurrencyInput = (value: string) => {
   return Number(digits || "0") / 100;
 };
 
+const getGrossProfitTextClass = (grossProfit: number) =>
+  grossProfit <= 0 ? "text-red-600" : "text-green-600";
+
 export default function CatalogServiceUpsertModal({
   open,
   service,
@@ -74,6 +78,14 @@ export default function CatalogServiceUpsertModal({
   const form = useForm<CatalogServiceFormValues>({
     defaultValues: DEFAULT_VALUES,
   });
+  const watchedValue = form.watch("valor");
+  const watchedCost = form.watch("custo");
+
+  const grossProfit = useMemo(() => {
+    const value = parseCurrencyInput(watchedValue || "R$ 0,00");
+    const cost = parseCurrencyInput(watchedCost || "R$ 0,00");
+    return value - cost;
+  }, [watchedCost, watchedValue]);
 
   useEffect(() => {
     if (open) {
@@ -178,12 +190,47 @@ export default function CatalogServiceUpsertModal({
             />
           </div>
 
-          <div>
-            <label className="mt-2 flex items-center gap-2 text-sm text-zinc-700">
-              <input type="checkbox" {...form.register("ativo")} />
-              Serviço ativo
-            </label>
+          <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
+            <p className="text-xs text-zinc-500">Lucro bruto (valor - custo)</p>
+            <p className={`text-base font-semibold ${getGrossProfitTextClass(grossProfit)}`}>
+              {moneyFormatter.format(grossProfit)}
+            </p>
           </div>
+
+          <Controller
+            name="ativo"
+            control={form.control}
+            render={({ field }) => (
+              <label className="mt-2 flex items-center gap-2 text-base font-medium text-zinc-700">
+                <input
+                  type="checkbox"
+                  checked={field.value}
+                  onChange={(event) => field.onChange(event.target.checked)}
+                  className="sr-only"
+                />
+                <span
+                  className={`relative inline-flex h-5 w-5 items-center justify-center rounded border transition-all duration-200 ease-out ${
+                    field.value
+                      ? "border-[var(--theme-highlight)] bg-white"
+                      : "border-zinc-300 bg-white"
+                  }`}
+                >
+                  <span
+                    className={`absolute inset-0 rounded-[3px] bg-[var(--theme-highlight)] transition-transform duration-300 ease-out ${
+                      field.value ? "scale-100" : "scale-0"
+                    }`}
+                  />
+                  <Check
+                    size={13}
+                    className={`relative z-10 text-white transition-all duration-200 ease-out ${
+                      field.value ? "scale-100 opacity-100 delay-100" : "scale-75 opacity-0"
+                    }`}
+                  />
+                </span>
+                Serviço ativo
+              </label>
+            )}
+          />
 
           <DialogFooter>
             <Button

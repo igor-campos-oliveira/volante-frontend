@@ -14,6 +14,7 @@ interface CatalogServiceRow {
   ativo: boolean | null;
   descricao: string | null;
   custo: number | string | null;
+  lucro_bruto: number | string | null;
   empresa_id: string | null;
   created_at: string;
 }
@@ -26,6 +27,7 @@ export interface CatalogService {
   isActive: boolean;
   activeField: string | null;
   cost: number;
+  grossProfit: number;
   companyId: string | null;
   createdAt: string;
 }
@@ -39,22 +41,38 @@ export interface CatalogServicePayload {
   empresa_id?: string | null;
 }
 
+interface SanitizedCatalogServicePayload {
+  descricao: string;
+  tipo: string;
+  valor: number;
+  custo: number;
+  lucro_bruto: number;
+  ativo: boolean;
+  empresa_id?: string | null;
+}
+
 const toNumber = (value: unknown, fallback = 0) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
 };
 
 const parseActiveValue = (value: boolean | null) => value ?? true;
+const calculateGrossProfit = (value: number, cost: number) => value - cost;
 
 const mapServiceRow = (row: CatalogServiceRow): CatalogService => {
+  const value = toNumber(row.valor, 0);
+  const cost = toNumber(row.custo, 0);
+  const grossProfit = calculateGrossProfit(value, cost);
+
   return {
     id: String(row.id),
     description: row.descricao?.trim() || "Sem descricao",
     type: row.tipo?.trim() || "SEM_CATEGORIA",
-    value: toNumber(row.valor, 0),
+    value,
     isActive: parseActiveValue(row.ativo),
     activeField: ACTIVE_FIELD,
-    cost: toNumber(row.custo, 0),
+    cost,
+    grossProfit,
     companyId: row.empresa_id,
     createdAt: row.created_at,
   };
@@ -79,7 +97,7 @@ export const getCatalogServicesAPI = async (
   const normalizedSearch = searchValue.trim();
 
   let query = fromCatalogServices().select(
-    "id, tipo, valor, ativo, descricao, custo, empresa_id, created_at",
+    "id, tipo, valor, ativo, descricao, custo, lucro_bruto, empresa_id, created_at",
     {
       count: "exact",
     },
@@ -139,7 +157,7 @@ export const deleteCatalogServiceAPI = async (serviceId: string) => {
 
 const sanitizeCatalogServicePayload = (
   payload: CatalogServicePayload,
-): CatalogServicePayload => {
+): SanitizedCatalogServicePayload => {
   const description = payload.descricao.trim();
   const type = payload.tipo.trim();
 
@@ -151,20 +169,56 @@ const sanitizeCatalogServicePayload = (
     throw new Error("Tipo e obrigatorio.");
   }
 
-  return {
+  const value = toNumber(payload.valor, 0);
+  const cost = toNumber(payload.custo, 0);
+  const grossProfit = calculateGrossProfit(value, cost);
+
+  const sanitizedPayload: SanitizedCatalogServicePayload = {
     descricao: description,
     tipo: type,
-    valor: toNumber(payload.valor, 0),
-    custo: toNumber(payload.custo, 0),
+    valor: value,
+    custo: cost,
+    lucro_bruto: grossProfit,
     ativo: payload.ativo ?? true,
-    empresa_id: payload.empresa_id?.trim() || null,
   };
+
+  // Only send company id when explicitly provided.
+  // This avoids overriding DB defaults/triggers with null on inserts.
+  if ("empresa_id" in payload) {
+    sanitizedPayload.empresa_id = payload.empresa_id?.trim() || null;
+  }
+
+  return sanitizedPayload;
+};
+
+const resolveCompanyIdFromSession = async () => {
+  const { data } = await supabase.auth.getSession();
+  const sessionUser = data.session?.user;
+
+  const fromUserMetadata = sessionUser?.user_metadata?.empresa_id;
+  const fromAppMetadata = sessionUser?.app_metadata?.empresa_id;
+  const fallbackUserId = sessionUser?.id;
+
+  const resolvedCompanyId =
+    typeof fromUserMetadata === "string"
+      ? fromUserMetadata
+      : typeof fromAppMetadata === "string"
+        ? fromAppMetadata
+        : fallbackUserId;
+
+  return resolvedCompanyId?.trim() || null;
 };
 
 export const createCatalogServiceAPI = async (payload: CatalogServicePayload) => {
   const sanitizedPayload = sanitizeCatalogServicePayload(payload);
+  const resolvedCompanyId =
+    sanitizedPayload.empresa_id?.trim() || (await resolveCompanyIdFromSession());
 
-  const { error } = await fromCatalogServices().insert([sanitizedPayload]);
+  const payloadToInsert = resolvedCompanyId
+    ? { ...sanitizedPayload, empresa_id: resolvedCompanyId }
+    : sanitizedPayload;
+
+  const { error } = await fromCatalogServices().insert([payloadToInsert]);
 
   if (error) throw error;
 };
