@@ -1,4 +1,4 @@
-import { Check, File, Save, X } from 'lucide-react';
+import { Check, File, Save, Search, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CustomerForm } from '@/components/FormSheet/Customer';
@@ -314,16 +314,20 @@ function ServiceOrderPage() {
             <form onSubmit={methods.handleSubmit(handleOnSave)} className="flex flex-col h-full gap-4">
               <Card className="px-4 rounded-3xl">
                 <div className="grid gap-3 py-4">
-                  <Input
-                    label="Pesquisar cliente"
-                    placeholder="Digite nome, telefone ou documento..."
-                    value={customerSearchInput}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setCustomerSearchInput(value);
-                      debounceCustomerSearch(value);
-                    }}
-                  />
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-[34px] h-4 w-4 text-muted-foreground" />
+                    <Input
+                      label="Pesquisar cliente"
+                      className="pl-9"
+                      placeholder="Digite nome, telefone ou documento..."
+                      value={customerSearchInput}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setCustomerSearchInput(value);
+                        debounceCustomerSearch(value);
+                      }}
+                    />
+                  </div>
 
                   {normalizedCustomerSearch.length >= 2 && (
                     <div className="rounded-md border border-dashed border-violet-300 p-2">
@@ -370,16 +374,20 @@ function ServiceOrderPage() {
 
               <Card className="px-4 rounded-3xl">
                 <div className="grid gap-3 py-4">
-                  <Input
-                    label="Pesquisar carro"
-                    placeholder="Digite placa, marca ou modelo..."
-                    value={vehicleSearchInput}
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      setVehicleSearchInput(value);
-                      debounceVehicleSearch(value);
-                    }}
-                  />
+                  <div className="relative">
+                    <Search className="pointer-events-none absolute left-3 top-[34px] h-4 w-4 text-muted-foreground" />
+                    <Input
+                      label="Pesquisar carro"
+                      className="pl-9"
+                      placeholder="Digite placa, marca ou modelo..."
+                      value={vehicleSearchInput}
+                      onChange={(event) => {
+                        const value = event.target.value;
+                        setVehicleSearchInput(value);
+                        debounceVehicleSearch(value);
+                      }}
+                    />
+                  </div>
 
                   {normalizedVehicleSearch.length >= 2 && (
                     <div className="rounded-md border border-dashed border-violet-300 p-2">
