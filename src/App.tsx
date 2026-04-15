@@ -4,7 +4,7 @@ import { Toaster } from "./components/ui/sonner";
 import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
 import Menu from "./components/Menu/Menu";
 import { ROUTER_PATHS } from "./routes/routes";
-import { Car, FilePlus, FolderSearch, Home, User } from "lucide-react";
+import { Car, FilePlus, FolderSearch, Home, User, Wrench } from "lucide-react";
 import VehiclesPage from "./pages/Vehicles/VehiclesPage";
 import CustomersPage from "./pages/Customers/CustomersPageWithModal";
 // import CatalogPage from "./pages/Catalog/CatalogPage";
@@ -18,12 +18,14 @@ import LoginPage from "./pages/Login";
 import EmployeesPage from "./pages/Employees/EmployeesPage";
 import { Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import CatalogServicesPage from "./pages/CatalogServices/CatalogServices";
 
 const MENU_LINKS = [
   {path: ROUTER_PATHS.HOME, label: 'Início',icon: <Home size={23}/>},
   {path: ROUTER_PATHS.SERVICE_ORDER + '/new',label: 'Novo',icon: <FilePlus size={23}/>},
   {path: ROUTER_PATHS.SERVICE_ORDERS,label: 'Orçamentos',icon: <FolderSearch size={23}/>},
   {path: ROUTER_PATHS.CUSTOMER,label: 'Clientes',icon: <User size={23}/>},
+  {path: ROUTER_PATHS.SERVICES, label: 'Servicos', icon: <Wrench size={23}/>},
   {path: ROUTER_PATHS.VEHICLE, label: 'Veículos', icon: <Car size={23}/>},
   {path: ROUTER_PATHS.EMPLOYEE, label: 'Funcionários', icon: <Users size={23}/>}
 
@@ -34,6 +36,7 @@ const INTERNAL_ROUTES = [
   { path: ROUTER_PATHS.SERVICE_ORDER + '/new', element: <ServiceOrderPage/> },
   { path: ROUTER_PATHS.SERVICE_ORDERS, element: <SearchServiceOrdersPage/> },
   { path: ROUTER_PATHS.CUSTOMER, element: <CustomersPage/> },
+  { path: ROUTER_PATHS.SERVICES, element: <CatalogServicesPage/> },
   { path: ROUTER_PATHS.VEHICLE, element: <VehiclesPage/> },
   { path: `${ROUTER_PATHS.SERVICE_ORDER}/:uuid`, element: <ServiceOrderPage/> },
   { path: ROUTER_PATHS.EMPLOYEE, element: <EmployeesPage/> },
