@@ -22,6 +22,10 @@ import { useLocation, useParams } from 'react-router-dom';
 import FileSelect from '@/components/ui/fileSelect';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import ServiceOrderAPI from '@/data/api/ServiceOrderAPI';
+import { Costumer, getCostomersAPI } from '@/data/api/CustomersAPI';
+import { getVehiclesAPI, Vehicle } from '@/data/api/VehiclesAPI';
+import useDebounce from '@/hooks/useDebounce';
+import { DEBOUNCE_TIMEOUT } from '@/data/constants/utils';
 
 const DEFAULT_FORM_VALUES: Partial<ServiceOrder> = {
   id: undefined,
@@ -42,14 +46,27 @@ const DEFAULT_FORM_VALUES: Partial<ServiceOrder> = {
 const normalizeDate = (value?: string) => (value ? String(value).substring(0, 10) : '');
 
 const createLocalItemId = () => `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const normalizePlate = (plate?: string) => String(plate || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+const hasCustomerData = (customer?: ServiceOrder['customer']) =>
+  Boolean(customer?.id || customer?.name || customer?.cpf || customer?.phone || customer?.email || customer?.address);
+const hasVehicleData = (vehicle?: ServiceOrder['vehicle']) =>
+  Boolean(vehicle?.id || vehicle?.plate || vehicle?.brand || vehicle?.model || vehicle?.year);
 
 function ServiceOrderPage() {
   const { uuid } = useParams();
   const location = useLocation();
   const [pdfData, setPdfData] = useState<ServiceOrder>();
+  const [showCustomerForm, setShowCustomerForm] = useState(Boolean(uuid));
+  const [showVehicleForm, setShowVehicleForm] = useState(Boolean(uuid));
+  const [customerSearchInput, setCustomerSearchInput] = useState('');
+  const [vehicleSearchInput, setVehicleSearchInput] = useState('');
+  const [customerSearchTerm, debounceCustomerSearch] = useDebounce({ timeout: DEBOUNCE_TIMEOUT });
+  const [vehicleSearchTerm, debounceVehicleSearch] = useDebounce({ timeout: DEBOUNCE_TIMEOUT });
 
   const methods = useForm<ServiceOrder>({ defaultValues: DEFAULT_FORM_VALUES as ServiceOrder });
   const queryClient = useQueryClient();
+  const normalizedCustomerSearch = String(customerSearchTerm || '').trim();
+  const normalizedVehicleSearch = String(vehicleSearchTerm || '').trim();
 
   const currentOrderId = String(uuid || methods.watch('id') || methods.watch('uuid') || '');
 
@@ -68,6 +85,18 @@ function ServiceOrderPage() {
     staleTime: 0,
   });
 
+  const { data: customerOptions = [], isFetching: isFetchingCustomers } = useQuery({
+    queryKey: ['service-order-customer-search', normalizedCustomerSearch],
+    queryFn: async () => (await getCostomersAPI(normalizedCustomerSearch, 1)).data,
+    enabled: normalizedCustomerSearch.length >= 2,
+  });
+
+  const { data: vehicleOptions = [], isFetching: isFetchingVehicles } = useQuery({
+    queryKey: ['service-order-vehicle-search', normalizedVehicleSearch],
+    queryFn: async () => (await getVehiclesAPI(normalizedVehicleSearch, 1)).data,
+    enabled: normalizedVehicleSearch.length >= 2,
+  });
+
   const applyServiceOrderToForm = useCallback(
     (serviceOrder?: ServiceOrder) => {
       if (!serviceOrder) return;
@@ -79,6 +108,8 @@ function ServiceOrderPage() {
         endAt: normalizeDate(serviceOrder.endAt),
         service_order_items: serviceOrder.service_order_items || [],
       } as ServiceOrder);
+      setShowCustomerForm(hasCustomerData(serviceOrder.customer));
+      setShowVehicleForm(hasVehicleData(serviceOrder.vehicle));
     },
     [methods],
   );
@@ -86,6 +117,10 @@ function ServiceOrderPage() {
   useEffect(() => {
     if (!uuid && location.pathname === '/service-order/new') {
       methods.reset(DEFAULT_FORM_VALUES as ServiceOrder);
+      setShowCustomerForm(false);
+      setShowVehicleForm(false);
+      setCustomerSearchInput('');
+      setVehicleSearchInput('');
     }
   }, [location.pathname, methods, uuid]);
 
@@ -198,6 +233,53 @@ function ServiceOrderPage() {
     }
   };
 
+  const handleSelectCustomer = (customer: Costumer) => {
+    methods.setValue(
+      'customer',
+      {
+        id: customer.id ? String(customer.id) : undefined,
+        name: customer.nome || '',
+        cpf: customer.numero_documento || '',
+        phone: customer.telefone || '',
+        email: customer.email || '',
+        address: customer.endereco || '',
+      },
+      { shouldDirty: true },
+    );
+    setShowCustomerForm(true);
+    setCustomerSearchInput(customer.nome || '');
+  };
+
+  const handleSelectVehicle = (vehicle: Vehicle) => {
+    methods.setValue(
+      'vehicle',
+      {
+        id: vehicle.id ? String(vehicle.id) : undefined,
+        plate: normalizePlate(vehicle.placa),
+        color: String(vehicle.cor || '').toLowerCase(),
+        brand: vehicle.marca || '',
+        model: vehicle.modelo || '',
+        year: vehicle.ano ? String(vehicle.ano) : '',
+        fuel: vehicle.combustivel || '',
+        km: vehicle.km || '',
+        chassi: vehicle.chassi || '',
+      },
+      { shouldDirty: true },
+    );
+    setShowVehicleForm(true);
+    setVehicleSearchInput(vehicle.placa || '');
+  };
+
+  const handleCreateNewCustomer = () => {
+    methods.setValue('customer', { ...DEFAULT_CUSTOMER_VALUE, id: undefined } as ServiceOrder['customer'], { shouldDirty: true });
+    setShowCustomerForm(true);
+  };
+
+  const handleCreateNewVehicle = () => {
+    methods.setValue('vehicle', { ...DEFAULT_VEHICLE_VALUES, id: undefined } as ServiceOrder['vehicle'], { shouldDirty: true });
+    setShowVehicleForm(true);
+  };
+
   const pdfFileName = `${pdfData?.vehicle?.brand}_${pdfData?.vehicle?.model}_${pdfData?.customer?.name}`;
 
   return (
@@ -231,11 +313,117 @@ function ServiceOrderPage() {
 
             <form onSubmit={methods.handleSubmit(handleOnSave)} className="flex flex-col h-full gap-4">
               <Card className="px-4 rounded-3xl">
-                <CustomerForm isPending={false} />
+                <div className="grid gap-3 py-4">
+                  <Input
+                    label="Pesquisar cliente"
+                    placeholder="Digite nome, telefone ou documento..."
+                    value={customerSearchInput}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setCustomerSearchInput(value);
+                      debounceCustomerSearch(value);
+                    }}
+                  />
+
+                  {normalizedCustomerSearch.length >= 2 && (
+                    <div className="rounded-md border border-dashed border-violet-300 p-2">
+                      {isFetchingCustomers ? (
+                        <p className="text-sm text-muted-foreground">Buscando clientes...</p>
+                      ) : customerOptions.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          {customerOptions.slice(0, 5).map((customer) => (
+                            <button
+                              key={String(customer.id || customer.nome)}
+                              type="button"
+                              className="rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
+                              onClick={() => handleSelectCustomer(customer)}
+                            >
+                              <p className="font-medium">{customer.nome || 'Sem nome'}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {[customer.telefone, customer.numero_documento].filter(Boolean).join(' • ') || 'Sem contato'}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Nenhum cliente encontrado.</p>
+                      )}
+                    </div>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-2 border-dashed border-violet-500 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                    onClick={handleCreateNewCustomer}
+                  >
+                    Novo cliente
+                  </Button>
+                </div>
               </Card>
+
+              {showCustomerForm && (
+                <Card className="px-4 rounded-3xl">
+                  <CustomerForm isPending={false} />
+                </Card>
+              )}
+
               <Card className="px-4 rounded-3xl">
-                <VehicleForm isPending={false} />
+                <div className="grid gap-3 py-4">
+                  <Input
+                    label="Pesquisar carro"
+                    placeholder="Digite placa, marca ou modelo..."
+                    value={vehicleSearchInput}
+                    onChange={(event) => {
+                      const value = event.target.value;
+                      setVehicleSearchInput(value);
+                      debounceVehicleSearch(value);
+                    }}
+                  />
+
+                  {normalizedVehicleSearch.length >= 2 && (
+                    <div className="rounded-md border border-dashed border-violet-300 p-2">
+                      {isFetchingVehicles ? (
+                        <p className="text-sm text-muted-foreground">Buscando carros...</p>
+                      ) : vehicleOptions.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          {vehicleOptions.slice(0, 5).map((vehicle) => (
+                            <button
+                              key={String(vehicle.id || vehicle.placa)}
+                              type="button"
+                              className="rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
+                              onClick={() => handleSelectVehicle(vehicle)}
+                            >
+                              <p className="font-medium">{normalizePlate(vehicle.placa) || 'Placa não informada'}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {[vehicle.marca, vehicle.modelo, vehicle.ano ? String(vehicle.ano) : ''].filter(Boolean).join(' • ') ||
+                                  'Sem detalhes'}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Nenhum carro encontrado.</p>
+                      )}
+                    </div>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="border-2 border-dashed border-violet-500 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                    onClick={handleCreateNewVehicle}
+                  >
+                    Novo carro
+                  </Button>
+                </div>
               </Card>
+
+              {showVehicleForm && (
+                <Card className="px-4 rounded-3xl">
+                  <VehicleForm isPending={false} />
+                </Card>
+              )}
               <Card className="flex flex-1 flex-col p-4 rounded-3xl gap-1">
                 <Textarea
                   className="flex-1"
@@ -276,7 +464,7 @@ function ServiceOrderPage() {
                 PDF
               </Button>
             }
-            title="Orcamento"
+            title="Orçamento"
             subtitle="Envie ou imprima para seu cliente"
             className="min-h-[calc(100vh-180px)]"
             async={true}
@@ -304,3 +492,4 @@ function ServiceOrderPage() {
 }
 
 export default ServiceOrderPage;
+
