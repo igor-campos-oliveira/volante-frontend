@@ -312,122 +312,122 @@ function ServiceOrderPage() {
             />
 
             <form onSubmit={methods.handleSubmit(handleOnSave)} className="flex flex-col h-full gap-4">
-              <Card className="px-4 rounded-3xl">
-                <div className="grid gap-3 py-4">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-[34px] h-4 w-4 text-muted-foreground" />
-                    <Input
-                      label="Pesquisar cliente"
-                      className="pl-9"
-                      placeholder="Digite nome, telefone ou documento..."
-                      value={customerSearchInput}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setCustomerSearchInput(value);
-                        debounceCustomerSearch(value);
-                      }}
-                    />
-                  </div>
-
-                  {normalizedCustomerSearch.length >= 2 && (
-                    <div className="rounded-md border border-dashed border-violet-300 p-2">
-                      {isFetchingCustomers ? (
-                        <p className="text-sm text-muted-foreground">Buscando clientes...</p>
-                      ) : customerOptions.length > 0 ? (
-                        <div className="flex flex-col gap-1">
-                          {customerOptions.slice(0, 5).map((customer) => (
-                            <button
-                              key={String(customer.id || customer.nome)}
-                              type="button"
-                              className="rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
-                              onClick={() => handleSelectCustomer(customer)}
-                            >
-                              <p className="font-medium">{customer.nome || 'Sem nome'}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {[customer.telefone, customer.numero_documento].filter(Boolean).join(' • ') || 'Sem contato'}
-                              </p>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">Nenhum cliente encontrado.</p>
-                      )}
+              {!showCustomerForm ? (
+                <Card className="px-4 rounded-3xl">
+                  <div className="grid gap-3 py-4">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-[34px] h-4 w-4 text-muted-foreground" />
+                      <Input
+                        label="Pesquisar cliente"
+                        className="pl-9"
+                        placeholder="Digite nome, telefone ou documento..."
+                        value={customerSearchInput}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setCustomerSearchInput(value);
+                          debounceCustomerSearch(value);
+                        }}
+                      />
                     </div>
-                  )}
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-2 border-dashed border-violet-500 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
-                    onClick={handleCreateNewCustomer}
-                  >
-                    Novo cliente
-                  </Button>
-                </div>
-              </Card>
+                    {normalizedCustomerSearch.length >= 2 && (
+                      <div className="rounded-md border border-dashed border-violet-300 p-2">
+                        {isFetchingCustomers ? (
+                          <p className="text-sm text-muted-foreground">Buscando clientes...</p>
+                        ) : customerOptions.length > 0 ? (
+                          <div className="flex flex-col gap-1">
+                            {customerOptions.slice(0, 5).map((customer) => (
+                              <button
+                                key={String(customer.id || customer.nome)}
+                                type="button"
+                                className="rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
+                                onClick={() => handleSelectCustomer(customer)}
+                              >
+                                <p className="font-medium">{customer.nome || 'Sem nome'}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {[customer.telefone, customer.numero_documento].filter(Boolean).join(' - ') || 'Sem contato'}
+                                </p>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Nenhum cliente encontrado.</p>
+                        )}
+                      </div>
+                    )}
 
-              {showCustomerForm && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-2 border-dashed border-violet-500 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                      onClick={handleCreateNewCustomer}
+                    >
+                      Novo cliente
+                    </Button>
+                  </div>
+                </Card>
+              ) : (
                 <Card className="px-4 rounded-3xl">
                   <CustomerForm isPending={false} />
                 </Card>
               )}
 
-              <Card className="px-4 rounded-3xl">
-                <div className="grid gap-3 py-4">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-[34px] h-4 w-4 text-muted-foreground" />
-                    <Input
-                      label="Pesquisar carro"
-                      className="pl-9"
-                      placeholder="Digite placa, marca ou modelo..."
-                      value={vehicleSearchInput}
-                      onChange={(event) => {
-                        const value = event.target.value;
-                        setVehicleSearchInput(value);
-                        debounceVehicleSearch(value);
-                      }}
-                    />
-                  </div>
-
-                  {normalizedVehicleSearch.length >= 2 && (
-                    <div className="rounded-md border border-dashed border-violet-300 p-2">
-                      {isFetchingVehicles ? (
-                        <p className="text-sm text-muted-foreground">Buscando carros...</p>
-                      ) : vehicleOptions.length > 0 ? (
-                        <div className="flex flex-col gap-1">
-                          {vehicleOptions.slice(0, 5).map((vehicle) => (
-                            <button
-                              key={String(vehicle.id || vehicle.placa)}
-                              type="button"
-                              className="rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
-                              onClick={() => handleSelectVehicle(vehicle)}
-                            >
-                              <p className="font-medium">{normalizePlate(vehicle.placa) || 'Placa não informada'}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {[vehicle.marca, vehicle.modelo, vehicle.ano ? String(vehicle.ano) : ''].filter(Boolean).join(' • ') ||
-                                  'Sem detalhes'}
-                              </p>
-                            </button>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-sm text-muted-foreground">Nenhum carro encontrado.</p>
-                      )}
+              {!showVehicleForm ? (
+                <Card className="px-4 rounded-3xl">
+                  <div className="grid gap-3 py-4">
+                    <div className="relative">
+                      <Search className="pointer-events-none absolute left-3 top-[34px] h-4 w-4 text-muted-foreground" />
+                      <Input
+                        label="Pesquisar carro"
+                        className="pl-9"
+                        placeholder="Digite placa, marca ou modelo..."
+                        value={vehicleSearchInput}
+                        onChange={(event) => {
+                          const value = event.target.value;
+                          setVehicleSearchInput(value);
+                          debounceVehicleSearch(value);
+                        }}
+                      />
                     </div>
-                  )}
 
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="border-2 border-dashed border-violet-500 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
-                    onClick={handleCreateNewVehicle}
-                  >
-                    Novo carro
-                  </Button>
-                </div>
-              </Card>
+                    {normalizedVehicleSearch.length >= 2 && (
+                      <div className="rounded-md border border-dashed border-violet-300 p-2">
+                        {isFetchingVehicles ? (
+                          <p className="text-sm text-muted-foreground">Buscando carros...</p>
+                        ) : vehicleOptions.length > 0 ? (
+                          <div className="flex flex-col gap-1">
+                            {vehicleOptions.slice(0, 5).map((vehicle) => (
+                              <button
+                                key={String(vehicle.id || vehicle.placa)}
+                                type="button"
+                                className="rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
+                                onClick={() => handleSelectVehicle(vehicle)}
+                              >
+                                <p className="font-medium">{normalizePlate(vehicle.placa) || 'Placa nao informada'}</p>
+                                <p className="text-xs text-muted-foreground">
+                                  {[vehicle.marca, vehicle.modelo, vehicle.ano ? String(vehicle.ano) : ''].filter(Boolean).join(' - ') ||
+                                    'Sem detalhes'}
+                                </p>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <p className="text-sm text-muted-foreground">Nenhum carro encontrado.</p>
+                        )}
+                      </div>
+                    )}
 
-              {showVehicleForm && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="border-2 border-dashed border-violet-500 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                      onClick={handleCreateNewVehicle}
+                    >
+                      Novo carro
+                    </Button>
+                  </div>
+                </Card>
+              ) : (
                 <Card className="px-4 rounded-3xl">
                   <VehicleForm isPending={false} />
                 </Card>
@@ -500,4 +500,5 @@ function ServiceOrderPage() {
 }
 
 export default ServiceOrderPage;
+
 

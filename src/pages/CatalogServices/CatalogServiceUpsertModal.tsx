@@ -8,9 +8,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import Textarea from "@/components/ui/textarea";
 import SelectOption from "@/components/ui/selectOptions";
 import {
   CatalogService,
+  CatalogServiceRequiredItem,
   createCatalogServiceAPI,
   updateCatalogServiceAPI,
 } from "@/data/api/CatalogServicesAPI";
@@ -32,6 +34,7 @@ type CatalogServiceFormValues = {
   valor: string;
   custo: string;
   ativo: boolean;
+  itens_necessarios: string;
 };
 
 const DEFAULT_VALUES: CatalogServiceFormValues = {
@@ -40,6 +43,7 @@ const DEFAULT_VALUES: CatalogServiceFormValues = {
   valor: "R$ 0,00",
   custo: "R$ 0,00",
   ativo: true,
+  itens_necessarios: "[]",
 };
 
 interface CatalogServiceUpsertModalProps {
@@ -67,6 +71,42 @@ const parseCurrencyInput = (value: string) => {
 
 const getGrossProfitTextClass = (grossProfit: number) =>
   grossProfit <= 0 ? "text-red-600" : "text-green-600";
+const parseRequiredItemsInput = (rawValue: string): CatalogServiceRequiredItem[] => {
+  if (!rawValue.trim()) {
+    return [];
+  }
+
+  let parsedValue: unknown;
+  try {
+    parsedValue = JSON.parse(rawValue);
+  } catch {
+    throw new Error("Itens necessarios deve ser um JSON valido.");
+  }
+
+  if (!Array.isArray(parsedValue)) {
+    throw new Error("Itens necessarios deve ser uma lista JSON.");
+  }
+
+  return parsedValue
+    .map((entry) => {
+      if (!entry || typeof entry !== "object") {
+        return null;
+      }
+
+      const item = String((entry as { item?: unknown }).item ?? "").trim();
+      const valor = Number((entry as { valor?: unknown }).valor ?? 0);
+
+      if (!item) {
+        return null;
+      }
+
+      return {
+        item,
+        valor: Number.isFinite(valor) ? valor : 0,
+      };
+    })
+    .filter((entry): entry is CatalogServiceRequiredItem => Boolean(entry));
+};
 
 export default function CatalogServiceUpsertModal({
   open,
@@ -96,6 +136,7 @@ export default function CatalogServiceUpsertModal({
         valor: moneyFormatter.format(service?.value ?? 0),
         custo: moneyFormatter.format(service?.cost ?? 0),
         ativo: service?.isActive ?? true,
+        itens_necessarios: JSON.stringify(service?.requiredItems ?? [], null, 2),
       });
       return;
     }
@@ -111,6 +152,7 @@ export default function CatalogServiceUpsertModal({
         valor: parseCurrencyInput(values.valor),
         custo: parseCurrencyInput(values.custo),
         ativo: values.ativo,
+        itens_necessarios: parseRequiredItemsInput(values.itens_necessarios),
       };
 
       if (service?.id) {
@@ -196,6 +238,13 @@ export default function CatalogServiceUpsertModal({
               {moneyFormatter.format(grossProfit)}
             </p>
           </div>
+
+          <Textarea
+            label="Itens necessarios (JSON)"
+            className="min-h-[130px] font-mono text-xs"
+            placeholder={'[{"item":"massa de polir","valor":20}]'}
+            {...form.register("itens_necessarios")}
+          />
 
           <Controller
             name="ativo"

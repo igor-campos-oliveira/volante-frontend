@@ -266,6 +266,14 @@ export default function CatalogServicesPage() {
                 <p className="min-w-[220px] flex-1 truncate font-medium text-zinc-900">
                   {service.description}
                 </p>
+                {service.requiredItems.length > 0 && (
+                  <p className="w-full text-xs text-zinc-500 md:w-auto">
+                    Itens necessarios:{" "}
+                    {service.requiredItems
+                      .map((entry) => `${entry.item} (${currencyFormat(entry.valor, "currency")})`)
+                      .join(", ")}
+                  </p>
+                )}
 
                 <div className="w-full text-right md:w-[220px]">
                   <p className="text-sm text-zinc-600">

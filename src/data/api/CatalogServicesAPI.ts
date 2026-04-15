@@ -15,8 +15,14 @@ interface CatalogServiceRow {
   descricao: string | null;
   custo: number | string | null;
   lucro_bruto: number | string | null;
+  itens_necessarios: unknown;
   empresa_id: string | null;
   created_at: string;
+}
+
+export interface CatalogServiceRequiredItem {
+  item: string;
+  valor: number;
 }
 
 export interface CatalogService {
@@ -28,6 +34,7 @@ export interface CatalogService {
   activeField: string | null;
   cost: number;
   grossProfit: number;
+  requiredItems: CatalogServiceRequiredItem[];
   companyId: string | null;
   createdAt: string;
 }
@@ -38,6 +45,7 @@ export interface CatalogServicePayload {
   valor: number;
   custo: number;
   ativo: boolean;
+  itens_necessarios?: CatalogServiceRequiredItem[];
   empresa_id?: string | null;
 }
 
@@ -48,6 +56,7 @@ interface SanitizedCatalogServicePayload {
   custo: number;
   lucro_bruto: number;
   ativo: boolean;
+  itens_necessarios: CatalogServiceRequiredItem[];
   empresa_id?: string | null;
 }
 
@@ -58,6 +67,31 @@ const toNumber = (value: unknown, fallback = 0) => {
 
 const parseActiveValue = (value: boolean | null) => value ?? true;
 const calculateGrossProfit = (value: number, cost: number) => value - cost;
+const sanitizeRequiredItems = (items: unknown): CatalogServiceRequiredItem[] => {
+  if (!Array.isArray(items)) {
+    return [];
+  }
+
+  return items
+    .map((rawItem) => {
+      if (!rawItem || typeof rawItem !== "object") {
+        return null;
+      }
+
+      const itemLabel = String((rawItem as { item?: unknown }).item ?? "").trim();
+      const itemValue = toNumber((rawItem as { valor?: unknown }).valor, 0);
+
+      if (!itemLabel) {
+        return null;
+      }
+
+      return {
+        item: itemLabel,
+        valor: itemValue,
+      };
+    })
+    .filter((entry): entry is CatalogServiceRequiredItem => Boolean(entry));
+};
 
 const mapServiceRow = (row: CatalogServiceRow): CatalogService => {
   const value = toNumber(row.valor, 0);
@@ -73,6 +107,7 @@ const mapServiceRow = (row: CatalogServiceRow): CatalogService => {
     activeField: ACTIVE_FIELD,
     cost,
     grossProfit,
+    requiredItems: sanitizeRequiredItems(row.itens_necessarios),
     companyId: row.empresa_id,
     createdAt: row.created_at,
   };
@@ -97,7 +132,7 @@ export const getCatalogServicesAPI = async (
   const normalizedSearch = searchValue.trim();
 
   let query = fromCatalogServices().select(
-    "id, tipo, valor, ativo, descricao, custo, lucro_bruto, empresa_id, created_at",
+    "id, tipo, valor, ativo, descricao, custo, lucro_bruto, itens_necessarios, empresa_id, created_at",
     {
       count: "exact",
     },
@@ -180,6 +215,7 @@ const sanitizeCatalogServicePayload = (
     custo: cost,
     lucro_bruto: grossProfit,
     ativo: payload.ativo ?? true,
+    itens_necessarios: sanitizeRequiredItems(payload.itens_necessarios),
   };
 
   // Only send company id when explicitly provided.
