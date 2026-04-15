@@ -35,9 +35,10 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Check, MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Check, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import CatalogServiceUpsertModal from "./CatalogServiceUpsertModal";
 
 const SERVICE_TYPE_OPTIONS = CAR_SERVICES.filter((service) => service.value !== "PARTS");
 const normalizeText = (value: string) =>
@@ -53,6 +54,8 @@ export default function CatalogServicesPage() {
   const queryClient = useQueryClient();
   const [searchValue, setSearchValue] = useDebounce({ timeout: DEBOUNCE_TIMEOUT });
   const [typeFilter, setTypeFilter] = useState("all");
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [editingService, setEditingService] = useState<CatalogService | null>(null);
   const [serviceToDelete, setServiceToDelete] = useState<CatalogService | null>(null);
 
   const serviceTypeValues = useMemo(
@@ -138,6 +141,16 @@ export default function CatalogServicesPage() {
     }
   };
 
+  const openCreateModal = () => {
+    setEditingService(null);
+    setIsModalOpen(true);
+  };
+
+  const openEditModal = (service: CatalogService) => {
+    setEditingService(service);
+    setIsModalOpen(true);
+  };
+
   return (
     <SearchPage>
       <SearchPage.Title>Servicos</SearchPage.Title>
@@ -148,6 +161,12 @@ export default function CatalogServicesPage() {
         onChange={(e) => {
           setSearchValue(e.target.value);
         }}
+        posChildren={
+          <Button variant="theme" onClick={openCreateModal}>
+            <Plus size={18} />
+            Novo serviço
+          </Button>
+        }
       >
         <SelectOption
           className="h-[50px] w-[180px] flex-grow-0"
@@ -263,7 +282,7 @@ export default function CatalogServicesPage() {
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-36">
                     <DropdownMenuItem
-                      onSelect={() => toast.info("Edicao em breve.")}
+                      onSelect={() => openEditModal(service)}
                       className="cursor-pointer"
                     >
                       <Pencil size={16} className="mr-2" />
@@ -333,6 +352,18 @@ export default function CatalogServicesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <CatalogServiceUpsertModal
+        open={isModalOpen}
+        service={editingService}
+        typeOptions={SERVICE_TYPE_OPTIONS}
+        onOpenChange={(open) => {
+          setIsModalOpen(open);
+          if (!open) {
+            setEditingService(null);
+          }
+        }}
+      />
     </SearchPage>
   );
 }

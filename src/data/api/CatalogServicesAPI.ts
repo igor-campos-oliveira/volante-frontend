@@ -30,6 +30,15 @@ export interface CatalogService {
   createdAt: string;
 }
 
+export interface CatalogServicePayload {
+  descricao: string;
+  tipo: string;
+  valor: number;
+  custo: number;
+  ativo: boolean;
+  empresa_id?: string | null;
+}
+
 const toNumber = (value: unknown, fallback = 0) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : fallback;
@@ -125,5 +134,51 @@ export const toggleCatalogServiceStatusAPI = async (
 export const deleteCatalogServiceAPI = async (serviceId: string) => {
   const parsedServiceId = parseServiceId(serviceId);
   const { error } = await fromCatalogServices().delete().eq("id", parsedServiceId);
+  if (error) throw error;
+};
+
+const sanitizeCatalogServicePayload = (
+  payload: CatalogServicePayload,
+): CatalogServicePayload => {
+  const description = payload.descricao.trim();
+  const type = payload.tipo.trim();
+
+  if (!description) {
+    throw new Error("Descricao e obrigatoria.");
+  }
+
+  if (!type) {
+    throw new Error("Tipo e obrigatorio.");
+  }
+
+  return {
+    descricao: description,
+    tipo: type,
+    valor: toNumber(payload.valor, 0),
+    custo: toNumber(payload.custo, 0),
+    ativo: payload.ativo ?? true,
+    empresa_id: payload.empresa_id?.trim() || null,
+  };
+};
+
+export const createCatalogServiceAPI = async (payload: CatalogServicePayload) => {
+  const sanitizedPayload = sanitizeCatalogServicePayload(payload);
+
+  const { error } = await fromCatalogServices().insert([sanitizedPayload]);
+
+  if (error) throw error;
+};
+
+export const updateCatalogServiceAPI = async (
+  serviceId: string,
+  payload: CatalogServicePayload,
+) => {
+  const parsedServiceId = parseServiceId(serviceId);
+  const sanitizedPayload = sanitizeCatalogServicePayload(payload);
+
+  const { error } = await fromCatalogServices()
+    .update(sanitizedPayload)
+    .eq("id", parsedServiceId);
+
   if (error) throw error;
 };
