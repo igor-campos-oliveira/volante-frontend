@@ -18,7 +18,7 @@ import LoginPage from "./pages/Login";
 import EmployeesPage from "./pages/Employees/EmployeesPage";
 import { Users } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import CatalogServicesPage from "./pages/CatalogServices/CatalogServices";
+import CatalogServicesPage from "./pages/CatalogServices/CatalogServicesPage";
 
 const MENU_LINKS = [
   {path: ROUTER_PATHS.HOME, label: 'Início',icon: <Home size={23}/>},

@@ -1,13 +1,15 @@
-import { supabase } from "./config";
+import { supabase, supabaseSchema } from "./config";
 
 const PAGE_SIZE = 10;
 const TABLE_NAME = "catalogo_servicos";
 const ACTIVE_FIELD = "ativo" as const;
 const ORDER_BY_FIELD = "descricao" as const;
 
+const fromCatalogServices = () => supabase.schema(supabaseSchema).from(TABLE_NAME);
+
 interface CatalogServiceRow {
   id: number;
-  categoria: string | null;
+  tipo: string | null;
   valor: number | string | null;
   ativo: boolean | null;
   descricao: string | null;
@@ -39,7 +41,7 @@ const mapServiceRow = (row: CatalogServiceRow): CatalogService => {
   return {
     id: String(row.id),
     description: row.descricao?.trim() || "Sem descricao",
-    type: row.categoria?.trim() || "SEM_CATEGORIA",
+    type: row.tipo?.trim() || "SEM_CATEGORIA",
     value: toNumber(row.valor, 0),
     isActive: parseActiveValue(row.ativo),
     activeField: ACTIVE_FIELD,
@@ -67,20 +69,21 @@ export const getCatalogServicesAPI = async (
   const to = from + PAGE_SIZE - 1;
   const normalizedSearch = searchValue.trim();
 
-  let query = supabase
-    .from(TABLE_NAME)
-    .select("id, categoria, valor, ativo, descricao, custo, empresa_id, created_at", {
+  let query = fromCatalogServices().select(
+    "id, tipo, valor, ativo, descricao, custo, empresa_id, created_at",
+    {
       count: "exact",
-    });
+    },
+  );
 
   if (normalizedSearch) {
     query = query.or(
-      `descricao.ilike.%${normalizedSearch}%,categoria.ilike.%${normalizedSearch}%`,
+      `descricao.ilike.%${normalizedSearch}%,tipo.ilike.%${normalizedSearch}%`,
     );
   }
 
   if (typeFilter && typeFilter !== "all") {
-    query = query.eq("categoria", typeFilter);
+    query = query.ilike("tipo", typeFilter.trim());
   }
 
   const { data, count, error } = await query
@@ -112,8 +115,7 @@ export const toggleCatalogServiceStatusAPI = async (
 
   const parsedServiceId = parseServiceId(serviceId);
 
-  const { error } = await supabase
-    .from(TABLE_NAME)
+  const { error } = await fromCatalogServices()
     .update({ [ACTIVE_FIELD]: nextValue })
     .eq("id", parsedServiceId);
 
@@ -122,6 +124,6 @@ export const toggleCatalogServiceStatusAPI = async (
 
 export const deleteCatalogServiceAPI = async (serviceId: string) => {
   const parsedServiceId = parseServiceId(serviceId);
-  const { error } = await supabase.from(TABLE_NAME).delete().eq("id", parsedServiceId);
+  const { error } = await fromCatalogServices().delete().eq("id", parsedServiceId);
   if (error) throw error;
 };

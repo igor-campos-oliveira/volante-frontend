@@ -35,11 +35,19 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { MoreVertical, Pencil, Trash2 } from "lucide-react";
+import { Check, MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 const SERVICE_TYPE_OPTIONS = CAR_SERVICES.filter((service) => service.value !== "PARTS");
+const normalizeText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+
+const normalizeValueKey = (value: string) => normalizeText(value).replace(/\s+/g, "_");
 
 export default function CatalogServicesPage() {
   const queryClient = useQueryClient();
@@ -173,7 +181,18 @@ export default function CatalogServicesPage() {
         )}
 
         {servicesData.map((service) => {
-          const serviceType = SERVICE_TYPE_OPTIONS.find((item) => item.value === service.type);
+          const normalizedServiceType = normalizeText(service.type || "");
+          const normalizedServiceTypeKey = normalizeValueKey(service.type || "");
+          const serviceType = CAR_SERVICES.find(
+            (item) =>
+              normalizeValueKey(item.value) === normalizedServiceTypeKey ||
+              normalizeText(item.label) === normalizedServiceType,
+          );
+          const typeColorClass = serviceType?.color || "bg-zinc-400";
+          const lightTypeColors = ["bg-indigo-300", "bg-blue-300", "bg-pink-400"];
+          const typeTextColorClass = lightTypeColors.includes(typeColorClass)
+            ? "text-zinc-900"
+            : "text-white";
           return (
             <article
               key={service.id}
@@ -186,13 +205,34 @@ export default function CatalogServicesPage() {
                     checked={service.isActive}
                     disabled={isTogglingStatus}
                     onChange={(e) => onToggleServiceStatus(service, e.target.checked)}
-                    className="h-4 w-4 cursor-pointer accent-[--theme-highlight]"
+                    className="sr-only"
                   />
+                  <span
+                    className={`relative inline-flex h-5 w-5 items-center justify-center rounded border transition-all duration-200 ease-out ${
+                      service.isActive
+                        ? "border-[var(--theme-highlight)] bg-white"
+                        : "border-zinc-300 bg-white"
+                    } ${isTogglingStatus ? "cursor-not-allowed opacity-60" : ""}`}
+                  >
+                    <span
+                      className={`absolute inset-0 rounded-[3px] bg-[var(--theme-highlight)] transition-transform duration-300 ease-out ${
+                        service.isActive ? "scale-100" : "scale-0"
+                      }`}
+                    />
+                    <Check
+                      size={13}
+                      className={`relative z-10 text-white transition-all duration-200 ease-out ${
+                        service.isActive ? "scale-100 opacity-100 delay-100" : "scale-75 opacity-0"
+                      }`}
+                    />
+                  </span>
                   {service.isActive ? "Ativo" : "Inativo"}
                 </label>
 
                 <div className="min-w-[150px]">
-                  <span className="inline-flex items-center rounded-full border px-3 py-1 text-xs font-medium text-zinc-700">
+                  <span
+                    className={`inline-flex items-center gap-2 rounded-full border border-transparent px-3 py-1 text-xs font-medium ${typeColorClass} ${typeTextColorClass}`}
+                  >
                     {serviceType?.label || service.type}
                   </span>
                 </div>
@@ -201,9 +241,14 @@ export default function CatalogServicesPage() {
                   {service.description}
                 </p>
 
-                <p className="w-full text-right text-sm font-semibold md:w-[160px]">
-                  {currencyFormat(service.value, "currency")}
-                </p>
+                <div className="w-full text-right md:w-[220px]">
+                  <p className="text-sm text-zinc-600">
+                    Custo: {currencyFormat(service.cost, "currency")}
+                  </p>
+                  <p className="text-base font-semibold text-zinc-900">
+                    Valor: {currencyFormat(service.value, "currency")}
+                  </p>
+                </div>
 
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
