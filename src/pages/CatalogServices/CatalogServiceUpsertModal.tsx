@@ -8,7 +8,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import Textarea from "@/components/ui/textarea";
 import SelectOption from "@/components/ui/selectOptions";
 import {
   CatalogService,
@@ -17,9 +16,9 @@ import {
   updateCatalogServiceAPI,
 } from "@/data/api/CatalogServicesAPI";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check } from "lucide-react";
-import { Controller, useForm } from "react-hook-form";
-import { useEffect, useMemo } from "react";
+import { Check, Plus, Trash2 } from "lucide-react";
+import { Controller, useFieldArray, useForm } from "react-hook-form";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 
 interface ServiceTypeOption {
@@ -32,18 +31,19 @@ type CatalogServiceFormValues = {
   descricao: string;
   tipo: string;
   valor: string;
-  custo: string;
   ativo: boolean;
-  itens_necessarios: string;
+  itens_necessarios: {
+    item: string;
+    valor: string;
+  }[];
 };
 
 const DEFAULT_VALUES: CatalogServiceFormValues = {
   descricao: "",
   tipo: "",
   valor: "R$ 0,00",
-  custo: "R$ 0,00",
   ativo: true,
-  itens_necessarios: "[]",
+  itens_necessarios: [],
 };
 
 interface CatalogServiceUpsertModalProps {
@@ -71,42 +71,26 @@ const parseCurrencyInput = (value: string) => {
 
 const getGrossProfitTextClass = (grossProfit: number) =>
   grossProfit <= 0 ? "text-red-600" : "text-green-600";
-const parseRequiredItemsInput = (rawValue: string): CatalogServiceRequiredItem[] => {
-  if (!rawValue.trim()) {
+const mapRequiredItemsToForm = (items?: CatalogServiceRequiredItem[]) => {
+  if (!items?.length) {
     return [];
   }
 
-  let parsedValue: unknown;
-  try {
-    parsedValue = JSON.parse(rawValue);
-  } catch {
-    throw new Error("Itens necessarios deve ser um JSON valido.");
-  }
-
-  if (!Array.isArray(parsedValue)) {
-    throw new Error("Itens necessarios deve ser uma lista JSON.");
-  }
-
-  return parsedValue
-    .map((entry) => {
-      if (!entry || typeof entry !== "object") {
-        return null;
-      }
-
-      const item = String((entry as { item?: unknown }).item ?? "").trim();
-      const valor = Number((entry as { valor?: unknown }).valor ?? 0);
-
-      if (!item) {
-        return null;
-      }
-
-      return {
-        item,
-        valor: Number.isFinite(valor) ? valor : 0,
-      };
-    })
-    .filter((entry): entry is CatalogServiceRequiredItem => Boolean(entry));
+  return items.map((entry) => ({
+    item: entry.item,
+    valor: moneyFormatter.format(entry.valor || 0),
+  }));
 };
+
+const normalizeRequiredItems = (
+  items: CatalogServiceFormValues["itens_necessarios"],
+): CatalogServiceRequiredItem[] =>
+  items
+    .map((entry) => ({
+      item: entry.item.trim(),
+      valor: parseCurrencyInput(entry.valor || "R$ 0,00"),
+    }))
+    .filter((entry) => Boolean(entry.item));
 
 export default function CatalogServiceUpsertModal({
   open,
@@ -115,17 +99,31 @@ export default function CatalogServiceUpsertModal({
   onOpenChange,
 }: CatalogServiceUpsertModalProps) {
   const queryClient = useQueryClient();
+  const [draftItemName, setDraftItemName] = useState("");
+  const [draftItemValue, setDraftItemValue] = useState("R$ 0,00");
   const form = useForm<CatalogServiceFormValues>({
     defaultValues: DEFAULT_VALUES,
   });
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "itens_necessarios",
+  });
   const watchedValue = form.watch("valor");
-  const watchedCost = form.watch("custo");
+  const watchedRequiredItems = form.watch("itens_necessarios");
+  const requiredItemsCost = useMemo(
+    () =>
+      (watchedRequiredItems || []).reduce(
+        (sum, entry) => sum + parseCurrencyInput(entry?.valor || "R$ 0,00"),
+        0,
+      ),
+    [watchedRequiredItems],
+  );
 
   const grossProfit = useMemo(() => {
     const value = parseCurrencyInput(watchedValue || "R$ 0,00");
-    const cost = parseCurrencyInput(watchedCost || "R$ 0,00");
+    const cost = requiredItemsCost;
     return value - cost;
-  }, [watchedCost, watchedValue]);
+  }, [requiredItemsCost, watchedValue]);
 
   useEffect(() => {
     if (open) {
@@ -134,9 +132,8 @@ export default function CatalogServiceUpsertModal({
         descricao: service?.description ?? "",
         tipo: service?.type ?? "",
         valor: moneyFormatter.format(service?.value ?? 0),
-        custo: moneyFormatter.format(service?.cost ?? 0),
         ativo: service?.isActive ?? true,
-        itens_necessarios: JSON.stringify(service?.requiredItems ?? [], null, 2),
+        itens_necessarios: mapRequiredItemsToForm(service?.requiredItems),
       });
       return;
     }
@@ -146,13 +143,16 @@ export default function CatalogServiceUpsertModal({
 
   const handleSave = async (values: CatalogServiceFormValues) => {
     try {
+      const requiredItems = normalizeRequiredItems(values.itens_necessarios);
+      const calculatedCost = requiredItems.reduce((sum, entry) => sum + entry.valor, 0);
+
       const payload = {
         descricao: values.descricao,
         tipo: values.tipo,
         valor: parseCurrencyInput(values.valor),
-        custo: parseCurrencyInput(values.custo),
+        custo: calculatedCost,
         ativo: values.ativo,
-        itens_necessarios: parseRequiredItemsInput(values.itens_necessarios),
+        itens_necessarios: requiredItems,
       };
 
       if (service?.id) {
@@ -171,9 +171,24 @@ export default function CatalogServiceUpsertModal({
     }
   };
 
+  const handleAddRequiredItem = () => {
+    const normalizedItemName = draftItemName.trim();
+    if (!normalizedItemName) {
+      toast.error("Informe o nome do item necessario.");
+      return;
+    }
+
+    append({
+      item: normalizedItemName,
+      valor: draftItemValue || "R$ 0,00",
+    });
+    setDraftItemName("");
+    setDraftItemValue("R$ 0,00");
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[90vh] max-w-2xl overflow-hidden">
         <DialogHeader>
           <DialogTitle>{service?.id ? "Editar serviço" : "Novo serviço"}</DialogTitle>
           <DialogDescription>
@@ -217,19 +232,12 @@ export default function CatalogServiceUpsertModal({
                 />
               )}
             />
-            <Controller
-              name="custo"
-              control={form.control}
-              render={({ field }) => (
-                <Input
-                  label="Custo"
-                  type="text"
-                  inputMode="numeric"
-                  value={field.value}
-                  onChange={(event) => field.onChange(formatCurrencyInput(event.target.value))}
-                />
-              )}
-            />
+            <div className="grid gap-2">
+              <p className="text-sm font-medium text-zinc-700">Custo (soma dos itens)</p>
+              <div className="h-10 rounded-md border bg-zinc-100 px-3 py-2 text-sm text-zinc-700">
+                {moneyFormatter.format(requiredItemsCost)}
+              </div>
+            </div>
           </div>
 
           <div className="rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2">
@@ -239,12 +247,63 @@ export default function CatalogServiceUpsertModal({
             </p>
           </div>
 
-          <Textarea
-            label="Itens necessarios (JSON)"
-            className="min-h-[130px] font-mono text-xs"
-            placeholder={'[{"item":"massa de polir","valor":20}]'}
-            {...form.register("itens_necessarios")}
-          />
+          <div className="grid gap-2">
+            <div className="rounded-md border p-2">
+              <div className="grid grid-cols-[1fr_170px_44px] items-end gap-2 border-b pb-2">
+                <Input
+                  label="Item necessario"
+                  placeholder="Ex: massa de polir"
+                  value={draftItemName}
+                  onChange={(event) => setDraftItemName(event.target.value)}
+                />
+                <Input
+                  label="Valor"
+                  type="text"
+                  inputMode="numeric"
+                  value={draftItemValue}
+                  onChange={(event) => setDraftItemValue(formatCurrencyInput(event.target.value))}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="h-10 w-10 p-0 transition-colors hover:bg-black hover:text-white"
+                  onClick={handleAddRequiredItem}
+                  aria-label="Adicionar item necessario"
+                >
+                  <Plus size={16} />
+                </Button>
+              </div>
+              <div className="grid grid-cols-[1fr_170px_44px] items-center gap-2 px-1 pb-2 pt-2 text-xs font-semibold text-zinc-500">
+                <span>Item necessario</span>
+                <span className="text-right">Valor</span>
+                <span className="text-center" />
+              </div>
+              <div className="h-[98px] space-y-2 overflow-y-auto pr-1">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="grid grid-cols-[1fr_170px_44px] items-center gap-2">
+                    <p className="rounded-md border bg-zinc-50 px-3 py-2 text-sm">
+                      {form.getValues(`itens_necessarios.${index}.item` as const)}
+                    </p>
+                    <p className="rounded-md border bg-zinc-50 px-3 py-2 text-right text-sm">
+                      {form.getValues(`itens_necessarios.${index}.valor` as const)}
+                    </p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="h-10 w-10 p-0 hover:bg-zinc-100"
+                      onClick={() => remove(index)}
+                      aria-label="Remover item necessario"
+                    >
+                      <Trash2 size={16} className="text-red-500" />
+                    </Button>
+                  </div>
+                ))}
+                {fields.length === 0 && (
+                  <p className="px-1 py-2 text-sm text-zinc-500">Nenhum item adicionado.</p>
+                )}
+              </div>
+            </div>
+          </div>
 
           <Controller
             name="ativo"
