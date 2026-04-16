@@ -150,7 +150,7 @@ export default function EmployeesPage() {
           setSearchValue(e.target.value);
         }}
         posChildren={
-          <Button variant="theme" onClick={openCreateModal}>
+          <Button variant="theme" className="h-[50px]" onClick={openCreateModal}>
             <Plus size={18} />
             Novo funcionario
           </Button>

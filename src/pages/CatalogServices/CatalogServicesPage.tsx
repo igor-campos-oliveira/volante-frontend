@@ -1,3 +1,4 @@
+import Card from "@/components/Card";
 import SearchPage from "@/components/SearchPage";
 import { Button } from "@/components/ui/button";
 import {
@@ -169,7 +170,7 @@ export default function CatalogServicesPage() {
           setSearchValue(e.target.value);
         }}
         posChildren={
-          <Button variant="theme" onClick={openCreateModal}>
+          <Button variant="theme" className="h-[50px]" onClick={openCreateModal}>
             <Plus size={18} />
             Novo serviço
           </Button>
@@ -191,17 +192,17 @@ export default function CatalogServicesPage() {
         />
       </SearchPage.SearchBar>
 
-      <div className="mt-2 flex flex-1 flex-col gap-2 overflow-y-auto">
+      <Card.Container>
         {isLoading &&
           Array.from({ length: 8 }).map((_, index) => (
             <Skeleton
               key={`catalog-services-skeleton-${index}`}
-              className="h-[78px] w-full rounded-lg"
+              className="h-[180px] w-full rounded-lg"
             />
           ))}
 
         {!isLoading && servicesData.length === 0 && (
-          <div className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
+          <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum servico encontrado.
           </div>
         )}
@@ -220,42 +221,74 @@ export default function CatalogServicesPage() {
             ? "text-zinc-900"
             : "text-white";
           return (
-            <article
+            <Card
               key={service.id}
-              className="rounded-xl border bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-12px_rgba(139,92,246,0.55)]"
+              className="bg-white p-4 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-12px_rgba(139,92,246,0.55)]"
             >
-              <div className="flex flex-wrap items-center gap-3 md:flex-nowrap">
-                <label className="flex items-center gap-2 text-sm text-zinc-600">
-                  <input
-                    type="checkbox"
-                    checked={service.isActive}
-                    disabled={isTogglingStatus}
-                    onChange={(e) => onToggleServiceStatus(service, e.target.checked)}
-                    className="sr-only"
-                  />
-                  <span
-                    className={`relative inline-flex h-5 w-5 items-center justify-center rounded border transition-all duration-200 ease-out ${
-                      service.isActive
-                        ? "border-[var(--theme-highlight)] bg-white"
-                        : "border-zinc-300 bg-white"
-                    } ${isTogglingStatus ? "cursor-not-allowed opacity-60" : ""}`}
-                  >
+              <div className="flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-2">
+                  <label className="flex items-center gap-2 text-sm text-zinc-600">
+                    <input
+                      type="checkbox"
+                      checked={service.isActive}
+                      disabled={isTogglingStatus}
+                      onChange={(e) => onToggleServiceStatus(service, e.target.checked)}
+                      className="sr-only"
+                    />
                     <span
-                      className={`absolute inset-0 rounded-[3px] bg-[var(--theme-highlight)] transition-transform duration-300 ease-out ${
-                        service.isActive ? "scale-100" : "scale-0"
-                      }`}
-                    />
-                    <Check
-                      size={13}
-                      className={`relative z-10 text-white transition-all duration-200 ease-out ${
-                        service.isActive ? "scale-100 opacity-100 delay-100" : "scale-75 opacity-0"
-                      }`}
-                    />
-                  </span>
-                  {service.isActive ? "Ativo" : "Inativo"}
-                </label>
+                      className={`relative inline-flex h-5 w-5 items-center justify-center rounded border transition-all duration-200 ease-out ${
+                        service.isActive
+                          ? "border-[var(--theme-highlight)] bg-white"
+                          : "border-zinc-300 bg-white"
+                      } ${isTogglingStatus ? "cursor-not-allowed opacity-60" : ""}`}
+                    >
+                      <span
+                        className={`absolute inset-0 rounded-[3px] bg-[var(--theme-highlight)] transition-transform duration-300 ease-out ${
+                          service.isActive ? "scale-100" : "scale-0"
+                        }`}
+                      />
+                      <Check
+                        size={13}
+                        className={`relative z-10 text-white transition-all duration-200 ease-out ${
+                          service.isActive ? "scale-100 opacity-100 delay-100" : "scale-75 opacity-0"
+                        }`}
+                      />
+                    </span>
+                    {service.isActive ? "Ativo" : "Inativo"}
+                  </label>
 
-                <div className="min-w-[150px]">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 rounded-full"
+                        aria-label="Mais opcoes"
+                      >
+                        <MoreVertical size={18} />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-36">
+                      <DropdownMenuItem
+                        onSelect={() => openEditModal(service)}
+                        className="cursor-pointer"
+                      >
+                        <Pencil size={16} className="mr-2" />
+                        Editar
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        disabled={isDeleting}
+                        onSelect={() => setServiceToDelete(service)}
+                        className="cursor-pointer text-destructive focus:text-destructive"
+                      >
+                        <Trash2 size={16} className="mr-2" />
+                        Excluir
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
+
+                <div>
                   <span
                     className={`inline-flex items-center gap-2 rounded-full border border-transparent px-3 py-1 text-xs font-medium ${typeColorClass} ${typeTextColorClass}`}
                   >
@@ -263,11 +296,12 @@ export default function CatalogServicesPage() {
                   </span>
                 </div>
 
-                <p className="min-w-[220px] flex-1 truncate font-medium text-zinc-900">
+                <p className="line-clamp-2 font-medium text-zinc-900">
                   {service.description}
                 </p>
+
                 {service.requiredItems.length > 0 && (
-                  <p className="w-full text-xs text-zinc-500 md:w-auto">
+                  <p className="text-xs text-zinc-500">
                     Itens necessarios:{" "}
                     {service.requiredItems
                       .map((entry) => `${entry.item} (${currencyFormat(entry.valor, "currency")})`)
@@ -275,7 +309,7 @@ export default function CatalogServicesPage() {
                   </p>
                 )}
 
-                <div className="w-full text-right md:w-[220px]">
+                <div className="mt-auto border-t pt-2 text-right">
                   <p className="text-sm text-zinc-600">
                     Custo: {currencyFormat(service.cost, "currency")}
                   </p>
@@ -286,41 +320,11 @@ export default function CatalogServicesPage() {
                     Lucro bruto: {currencyFormat(service.grossProfit, "currency")}
                   </p>
                 </div>
-
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-full"
-                      aria-label="Mais opcoes"
-                    >
-                      <MoreVertical size={18} />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" className="w-36">
-                    <DropdownMenuItem
-                      onSelect={() => openEditModal(service)}
-                      className="cursor-pointer"
-                    >
-                      <Pencil size={16} className="mr-2" />
-                      Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      disabled={isDeleting}
-                      onSelect={() => setServiceToDelete(service)}
-                      className="cursor-pointer text-destructive focus:text-destructive"
-                    >
-                      <Trash2 size={16} className="mr-2" />
-                      Excluir
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
               </div>
-            </article>
+            </Card>
           );
         })}
-      </div>
+      </Card.Container>
 
       <SearchPage.LoadMore
         visible={hasNextPage}
