@@ -31,9 +31,12 @@ import { isToday } from "@/lib/utils";
 import {
   useInfiniteQuery,
   useMutation,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query";
 import {
+  Car,
+  ClipboardList,
   Home,
   Mail,
   MoreVertical,
@@ -43,10 +46,17 @@ import {
   Trash2,
 } from "lucide-react";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import ServiceOrderAPI from "@/data/api/ServiceOrderAPI";
+import { ServiceOrder } from "@/pages/ServiceOrder/types";
+import { ROUTER_PATHS } from "@/routes/routes";
+import { useServiceOrderStore } from "@/hooks/useServiceOrder";
 import CustomerUpsertModal from "./CustomerUpsertModal";
 
 export default function CustomersPage() {
+  const navigate = useNavigate();
+  const { setServiceOrder } = useServiceOrderStore();
   const queryClient = useQueryClient();
   const [searchValue, setSearchValue] = useDebounce({
     timeout: DEBOUNCE_TIMEOUT,
@@ -54,6 +64,8 @@ export default function CustomersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Costumer | null>(null);
   const [customerToDelete, setCustomerToDelete] = useState<Costumer | null>(null);
+  const [customerToViewBudgets, setCustomerToViewBudgets] =
+    useState<Costumer | null>(null);
 
   const {
     data: customers,
@@ -76,6 +88,16 @@ export default function CustomersPage() {
   const lastUpdatedAt =
     "Ultima atualizacao: " + timestampToLocaleString(dataUpdatedAt);
 
+  const {
+    data: customerBudgets = [],
+    isLoading: isLoadingBudgets,
+    isFetching: isFetchingBudgets,
+  } = useQuery({
+    queryKey: ["get_customer_budgets", customerToViewBudgets?.id],
+    queryFn: () => ServiceOrderAPI.getByCustomerId(customerToViewBudgets?.id as string),
+    enabled: Boolean(customerToViewBudgets?.id),
+  });
+
   const openCreateModal = () => {
     setEditingCustomer(null);
     setIsModalOpen(true);
@@ -93,6 +115,22 @@ export default function CustomersPage() {
 
   const openDeleteConfirm = (customer: Costumer) => {
     setCustomerToDelete(customer);
+  };
+
+  const openBudgetsModal = (customer: Costumer) => {
+    setCustomerToViewBudgets(customer);
+  };
+
+  const closeBudgetsModal = () => {
+    setCustomerToViewBudgets(null);
+  };
+
+  const openBudget = async (serviceOrder: ServiceOrder) => {
+    await setServiceOrder({ ...serviceOrder });
+    closeBudgetsModal();
+    navigate(`${ROUTER_PATHS.SERVICE_ORDER}/${serviceOrder.uuid || serviceOrder.id}`, {
+      state: { service_order: serviceOrder },
+    });
   };
 
   const closeDeleteConfirm = () => {
@@ -186,6 +224,13 @@ export default function CustomersPage() {
                       Editar
                     </DropdownMenuItem>
                     <DropdownMenuItem
+                      onSelect={() => openBudgetsModal(customer)}
+                      className="cursor-pointer"
+                    >
+                      <ClipboardList size={16} className="mr-2" />
+                      Orçamentos
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
                       disabled={isDeleting}
                       onSelect={() => {
                         openDeleteConfirm(customer);
@@ -233,6 +278,77 @@ export default function CustomersPage() {
           }
         }}
       />
+      <Dialog
+        open={Boolean(customerToViewBudgets)}
+        onOpenChange={(open) => {
+          if (!open) {
+            closeBudgetsModal();
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>
+              Orçamentos de {customerToViewBudgets?.nome || "cliente"}
+            </DialogTitle>
+            <DialogDescription>
+              Lista de orcamentos relacionados ao cliente selecionado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[55vh] overflow-y-auto space-y-2 pr-1">
+            {(isLoadingBudgets || isFetchingBudgets) &&
+              Array.from({ length: 4 }).map((_, index) => (
+                <Skeleton
+                  key={`customer-budgets-skeleton-${index}`}
+                  className="h-[84px] w-full rounded-lg"
+                />
+              ))}
+
+            {!isLoadingBudgets && !isFetchingBudgets && customerBudgets.length === 0 && (
+              <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+                Nenhum orcamento encontrado para este cliente.
+              </div>
+            )}
+
+            {!isLoadingBudgets &&
+              !isFetchingBudgets &&
+              customerBudgets.map((serviceOrder) => (
+                <button
+                  key={serviceOrder.uuid || serviceOrder.id}
+                  type="button"
+                  onClick={() => openBudget(serviceOrder as ServiceOrder)}
+                  className="w-full rounded-lg border p-3 text-left transition hover:bg-muted"
+                >
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-medium">
+                      Orcamento #{serviceOrder.uuid || serviceOrder.id}
+                    </p>
+                    <span className="rounded-full bg-muted px-2 py-1 text-xs">
+                      {serviceOrder.status?.replace(/_/g, " ") || "sem status"}
+                    </span>
+                  </div>
+                  <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                    <p className="flex items-center gap-1">
+                      <Car size={14} />
+                      {serviceOrder?.vehicle?.brand || serviceOrder?.vehicle?.model
+                        ? `${serviceOrder?.vehicle?.brand || ""} ${serviceOrder?.vehicle?.model || ""}`.trim()
+                        : "Veiculo nao informado"}
+                    </p>
+                    <p className="flex items-center gap-1">
+                      <ClipboardList size={14} />
+                      Placa: {serviceOrder?.vehicle?.plate || "nao informada"}
+                    </p>
+                  </div>
+                </button>
+              ))}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={closeBudgetsModal}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Dialog
         open={Boolean(customerToDelete)}
         onOpenChange={(open) => {

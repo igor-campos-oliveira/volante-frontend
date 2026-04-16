@@ -324,6 +324,37 @@ export async function getServiceOrders(searchValue = '', page = 1, filter: Filte
   };
 }
 
+export async function getServiceOrdersByCustomerId(customerId: string | number): Promise<ServiceOrder[]> {
+  const parsedCustomerId = parseNumericId(customerId);
+  if (!parsedCustomerId) {
+    throw new Error('ID do cliente invalido para carregar orcamentos.');
+  }
+
+  const { data, error } = await fromSchema(ORCAMENTOS_TABLE)
+    .select('*')
+    .eq('cliente_id', parsedCustomerId)
+    .order('data_criacao', { ascending: false });
+
+  if (error) throw error;
+
+  const orders = (data ?? []) as OrcamentoRow[];
+  if (!orders.length) {
+    return [];
+  }
+
+  const plates = Array.from(new Set(orders.map((order) => normalizePlate(order.placa)).filter(Boolean)));
+  const [customersMap, vehiclesMap] = await Promise.all([
+    loadCustomersMap([parsedCustomerId]),
+    loadVehiclesMap(plates),
+  ]);
+
+  return orders.map((order) => {
+    const customer = customersMap.get(String(order.cliente_id ?? parsedCustomerId));
+    const vehicle = vehiclesMap.get(normalizePlate(order.placa));
+    return mapOrderRowToServiceOrder({ order, customer, vehicle });
+  });
+}
+
 export async function getServiceOrderById(id: string | number): Promise<ServiceOrder> {
   const parsedId = parseNumericId(id);
   if (!parsedId) {

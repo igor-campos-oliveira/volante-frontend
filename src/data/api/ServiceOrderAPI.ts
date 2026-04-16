@@ -2,6 +2,7 @@ import { estimateService } from './config';
 import {
   getServiceOrderById,
   getServiceOrders,
+  getServiceOrdersByCustomerId,
   saveServiceOrder,
   ServiceOrderResponse,
 } from '@/data/services/orcamentoService';
@@ -18,6 +19,9 @@ const ServiceOrderAPI = {
   ): Promise<ServiceOrderResponse> => getServiceOrders(searchValue, page, filter),
 
   getById: (id: string | number): Promise<ServiceOrder> => getServiceOrderById(id),
+
+  getByCustomerId: (customerId: string | number): Promise<ServiceOrder[]> =>
+    getServiceOrdersByCustomerId(customerId),
 
   put: async (serviceOrder: ServiceOrder) => {
     const savedOrder = await saveServiceOrder(serviceOrder);
@@ -44,3 +48,4 @@ const ServiceOrderAPI = {
 };
 
 export default ServiceOrderAPI;
+
