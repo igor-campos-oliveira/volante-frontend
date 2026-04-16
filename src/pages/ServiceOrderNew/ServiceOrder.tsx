@@ -1,4 +1,4 @@
-import { Check, File, Save, Search, X } from 'lucide-react';
+import { ArrowLeft, Check, File, Save, Search, X } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CustomerForm } from '@/components/FormSheet/Customer';
@@ -26,6 +26,7 @@ import { Costumer, getCostomersAPI } from '@/data/api/CustomersAPI';
 import { getVehiclesAPI, Vehicle } from '@/data/api/VehiclesAPI';
 import useDebounce from '@/hooks/useDebounce';
 import { DEBOUNCE_TIMEOUT } from '@/data/constants/utils';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 
 const DEFAULT_FORM_VALUES: Partial<ServiceOrder> = {
   id: undefined,
@@ -46,7 +47,7 @@ const DEFAULT_FORM_VALUES: Partial<ServiceOrder> = {
 const normalizeDate = (value?: string) => (value ? String(value).substring(0, 10) : '');
 
 const createLocalItemId = () => `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-const normalizePlate = (plate?: string) => String(plate || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+const normalizePlate = (plate?: string | null) => String(plate || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 const hasCustomerData = (customer?: ServiceOrder['customer']) =>
   Boolean(customer?.id || customer?.name || customer?.cpf || customer?.phone || customer?.email || customer?.address);
 const hasVehicleData = (vehicle?: ServiceOrder['vehicle']) =>
@@ -56,10 +57,16 @@ function ServiceOrderPage() {
   const { uuid } = useParams();
   const location = useLocation();
   const [pdfData, setPdfData] = useState<ServiceOrder>();
-  const [showCustomerForm, setShowCustomerForm] = useState(Boolean(uuid));
-  const [showVehicleForm, setShowVehicleForm] = useState(Boolean(uuid));
   const [customerSearchInput, setCustomerSearchInput] = useState('');
   const [vehicleSearchInput, setVehicleSearchInput] = useState('');
+  const [isCustomerLookupOpen, setIsCustomerLookupOpen] = useState(false);
+  const [isVehicleLookupOpen, setIsVehicleLookupOpen] = useState(false);
+  const [isCustomerCreateOpen, setIsCustomerCreateOpen] = useState(false);
+  const [isVehicleCreateOpen, setIsVehicleCreateOpen] = useState(false);
+  const [customerDraftBeforeCreate, setCustomerDraftBeforeCreate] = useState<ServiceOrder['customer'] | null>(null);
+  const [vehicleDraftBeforeCreate, setVehicleDraftBeforeCreate] = useState<ServiceOrder['vehicle'] | null>(null);
+  const [previousCustomerSelection, setPreviousCustomerSelection] = useState<ServiceOrder['customer'] | null>(null);
+  const [previousVehicleSelection, setPreviousVehicleSelection] = useState<ServiceOrder['vehicle'] | null>(null);
   const [customerSearchTerm, debounceCustomerSearch] = useDebounce({ timeout: DEBOUNCE_TIMEOUT });
   const [vehicleSearchTerm, debounceVehicleSearch] = useDebounce({ timeout: DEBOUNCE_TIMEOUT });
 
@@ -69,6 +76,10 @@ function ServiceOrderPage() {
   const normalizedVehicleSearch = String(vehicleSearchTerm || '').trim();
 
   const currentOrderId = String(uuid || methods.watch('id') || methods.watch('uuid') || '');
+  const customerSummary = methods.watch('customer');
+  const vehicleSummary = methods.watch('vehicle');
+  const hasSelectedCustomer = hasCustomerData(customerSummary);
+  const hasSelectedVehicle = hasVehicleData(vehicleSummary);
 
   const { data: serviceOrderData } = useQuery({
     queryKey: ['service-order', uuid],
@@ -108,8 +119,6 @@ function ServiceOrderPage() {
         endAt: normalizeDate(serviceOrder.endAt),
         service_order_items: serviceOrder.service_order_items || [],
       } as ServiceOrder);
-      setShowCustomerForm(hasCustomerData(serviceOrder.customer));
-      setShowVehicleForm(hasVehicleData(serviceOrder.vehicle));
     },
     [methods],
   );
@@ -117,8 +126,6 @@ function ServiceOrderPage() {
   useEffect(() => {
     if (!uuid && location.pathname === '/service-order/new') {
       methods.reset(DEFAULT_FORM_VALUES as ServiceOrder);
-      setShowCustomerForm(false);
-      setShowVehicleForm(false);
       setCustomerSearchInput('');
       setVehicleSearchInput('');
     }
@@ -234,6 +241,7 @@ function ServiceOrderPage() {
   };
 
   const handleSelectCustomer = (customer: Costumer) => {
+    setPreviousCustomerSelection(methods.getValues('customer'));
     methods.setValue(
       'customer',
       {
@@ -246,11 +254,12 @@ function ServiceOrderPage() {
       },
       { shouldDirty: true },
     );
-    setShowCustomerForm(true);
     setCustomerSearchInput(customer.nome || '');
+    setIsCustomerLookupOpen(false);
   };
 
   const handleSelectVehicle = (vehicle: Vehicle) => {
+    setPreviousVehicleSelection(methods.getValues('vehicle'));
     methods.setValue(
       'vehicle',
       {
@@ -266,18 +275,58 @@ function ServiceOrderPage() {
       },
       { shouldDirty: true },
     );
-    setShowVehicleForm(true);
     setVehicleSearchInput(vehicle.placa || '');
+    setIsVehicleLookupOpen(false);
   };
 
-  const handleCreateNewCustomer = () => {
+  const openCustomerCreateModal = () => {
+    const currentCustomer = methods.getValues('customer');
+    setCustomerDraftBeforeCreate(currentCustomer);
+    setPreviousCustomerSelection(currentCustomer);
     methods.setValue('customer', { ...DEFAULT_CUSTOMER_VALUE, id: undefined } as ServiceOrder['customer'], { shouldDirty: true });
-    setShowCustomerForm(true);
+    setCustomerSearchInput('');
+    debounceCustomerSearch('');
+    setIsCustomerLookupOpen(false);
+    setIsCustomerCreateOpen(true);
   };
 
-  const handleCreateNewVehicle = () => {
+  const openVehicleCreateModal = () => {
+    const currentVehicle = methods.getValues('vehicle');
+    setVehicleDraftBeforeCreate(currentVehicle);
+    setPreviousVehicleSelection(currentVehicle);
     methods.setValue('vehicle', { ...DEFAULT_VEHICLE_VALUES, id: undefined } as ServiceOrder['vehicle'], { shouldDirty: true });
-    setShowVehicleForm(true);
+    setVehicleSearchInput('');
+    debounceVehicleSearch('');
+    setIsVehicleLookupOpen(false);
+    setIsVehicleCreateOpen(true);
+  };
+
+  const handleCancelCreateCustomer = () => {
+    if (customerDraftBeforeCreate) {
+      methods.setValue('customer', customerDraftBeforeCreate, { shouldDirty: true });
+    }
+    setIsCustomerCreateOpen(false);
+  };
+
+  const handleCancelCreateVehicle = () => {
+    if (vehicleDraftBeforeCreate) {
+      methods.setValue('vehicle', vehicleDraftBeforeCreate, { shouldDirty: true });
+    }
+    setIsVehicleCreateOpen(false);
+  };
+
+  const handleRestorePreviousCustomer = () => {
+    if (!previousCustomerSelection) return;
+    const currentCustomer = methods.getValues('customer');
+    methods.setValue('customer', previousCustomerSelection, { shouldDirty: true });
+    setPreviousCustomerSelection(currentCustomer);
+  };
+
+  const handleRestorePreviousVehicle = () => {
+    if (!previousVehicleSelection) return;
+    const currentVehicle = methods.getValues('vehicle');
+    methods.setValue('vehicle', previousVehicleSelection, { shouldDirty: true });
+    setPreviousVehicleSelection(currentVehicle);
   };
 
   const pdfFileName = `${pdfData?.vehicle?.brand}_${pdfData?.vehicle?.model}_${pdfData?.customer?.name}`;
@@ -312,126 +361,78 @@ function ServiceOrderPage() {
             />
 
             <form onSubmit={methods.handleSubmit(handleOnSave)} className="flex flex-col h-full gap-4">
-              {!showCustomerForm ? (
-                <Card className="px-4 rounded-3xl">
-                  <div className="grid gap-3 py-4">
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-3 top-[34px] h-4 w-4 text-muted-foreground" />
-                      <Input
-                        label="Pesquisar cliente"
-                        className="pl-9"
-                        placeholder="Digite nome, telefone ou documento..."
-                        value={customerSearchInput}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          setCustomerSearchInput(value);
-                          debounceCustomerSearch(value);
-                        }}
-                      />
-                    </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button type="button" variant="outline" onClick={() => setIsCustomerLookupOpen(true)}>
+                  <Search size={16} className="mr-2" />
+                  Pesquisar cliente
+                </Button>
+                <Button type="button" variant="outline" onClick={() => setIsVehicleLookupOpen(true)}>
+                  <Search size={16} className="mr-2" />
+                  Pesquisar carro
+                </Button>
+              </div>
 
-                    {normalizedCustomerSearch.length >= 2 && (
-                      <div className="rounded-md border border-dashed border-violet-300 p-2">
-                        {isFetchingCustomers ? (
-                          <p className="text-sm text-muted-foreground">Buscando clientes...</p>
-                        ) : customerOptions.length > 0 ? (
-                          <div className="flex flex-col gap-1">
-                            {customerOptions.slice(0, 5).map((customer) => (
-                              <button
-                                key={String(customer.id || customer.nome)}
-                                type="button"
-                                className="rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
-                                onClick={() => handleSelectCustomer(customer)}
-                              >
-                                <p className="font-medium">{customer.nome || 'Sem nome'}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {[customer.telefone, customer.numero_documento].filter(Boolean).join(' - ') || 'Sem contato'}
-                                </p>
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Nenhum cliente encontrado.</p>
-                        )}
-                      </div>
-                    )}
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="border-2 border-dashed border-violet-500 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
-                      onClick={handleCreateNewCustomer}
-                    >
-                      Novo cliente
-                    </Button>
+              <Card
+                className={`rounded-3xl p-4 h-[140px] overflow-hidden border-2 border-dashed ${
+                  hasSelectedCustomer ? 'border-violet-300 bg-white' : 'border-zinc-300 bg-zinc-100'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold">Cliente</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                    disabled={!previousCustomerSelection}
+                    onClick={handleRestorePreviousCustomer}
+                    aria-label="Voltar para cliente anterior"
+                    title="Voltar selecao"
+                  >
+                    <ArrowLeft size={14} />
+                  </Button>
+                </div>
+                {hasSelectedCustomer ? (
+                  <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    <p className="truncate">{customerSummary?.name || 'Sem nome'}</p>
+                    <p className="truncate">{customerSummary?.phone || 'Sem telefone'}</p>
+                    <p className="truncate">{customerSummary?.email || customerSummary?.cpf || 'Sem contato extra'}</p>
                   </div>
-                </Card>
-              ) : (
-                <Card className="px-4 rounded-3xl">
-                  <CustomerForm isPending={false} />
-                </Card>
-              )}
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">Nenhum cliente selecionado.</p>
+                )}
+              </Card>
 
-              {!showVehicleForm ? (
-                <Card className="px-4 rounded-3xl">
-                  <div className="grid gap-3 py-4">
-                    <div className="relative">
-                      <Search className="pointer-events-none absolute left-3 top-[34px] h-4 w-4 text-muted-foreground" />
-                      <Input
-                        label="Pesquisar carro"
-                        className="pl-9"
-                        placeholder="Digite placa, marca ou modelo..."
-                        value={vehicleSearchInput}
-                        onChange={(event) => {
-                          const value = event.target.value;
-                          setVehicleSearchInput(value);
-                          debounceVehicleSearch(value);
-                        }}
-                      />
-                    </div>
-
-                    {normalizedVehicleSearch.length >= 2 && (
-                      <div className="rounded-md border border-dashed border-violet-300 p-2">
-                        {isFetchingVehicles ? (
-                          <p className="text-sm text-muted-foreground">Buscando carros...</p>
-                        ) : vehicleOptions.length > 0 ? (
-                          <div className="flex flex-col gap-1">
-                            {vehicleOptions.slice(0, 5).map((vehicle) => (
-                              <button
-                                key={String(vehicle.id || vehicle.placa)}
-                                type="button"
-                                className="rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
-                                onClick={() => handleSelectVehicle(vehicle)}
-                              >
-                                <p className="font-medium">{normalizePlate(vehicle.placa) || 'Placa nao informada'}</p>
-                                <p className="text-xs text-muted-foreground">
-                                  {[vehicle.marca, vehicle.modelo, vehicle.ano ? String(vehicle.ano) : ''].filter(Boolean).join(' - ') ||
-                                    'Sem detalhes'}
-                                </p>
-                              </button>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="text-sm text-muted-foreground">Nenhum carro encontrado.</p>
-                        )}
-                      </div>
-                    )}
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="border-2 border-dashed border-violet-500 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
-                      onClick={handleCreateNewVehicle}
-                    >
-                      Novo carro
-                    </Button>
+              <Card
+                className={`rounded-3xl p-4 h-[140px] overflow-hidden border-2 border-dashed ${
+                  hasSelectedVehicle ? 'border-violet-300 bg-white' : 'border-zinc-300 bg-zinc-100'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-semibold">Carro</p>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 transition-colors hover:bg-blue-50 hover:text-blue-600"
+                    disabled={!previousVehicleSelection}
+                    onClick={handleRestorePreviousVehicle}
+                    aria-label="Voltar para carro anterior"
+                    title="Voltar selecao"
+                  >
+                    <ArrowLeft size={14} />
+                  </Button>
+                </div>
+                {hasSelectedVehicle ? (
+                  <div className="mt-2 space-y-1 text-sm text-muted-foreground">
+                    <p className="truncate">{normalizePlate(vehicleSummary?.plate) || 'Placa nao informada'}</p>
+                    <p className="truncate">{[vehicleSummary?.brand, vehicleSummary?.model].filter(Boolean).join(' - ') || 'Sem detalhes'}</p>
+                    <p className="truncate">{vehicleSummary?.year || 'Ano nao informado'}</p>
                   </div>
-                </Card>
-              ) : (
-                <Card className="px-4 rounded-3xl">
-                  <VehicleForm isPending={false} />
-                </Card>
-              )}
+                ) : (
+                  <p className="mt-2 text-sm text-muted-foreground">Nenhum carro selecionado.</p>
+                )}
+              </Card>
               <Card className="flex flex-1 flex-col p-4 rounded-3xl gap-1">
                 <Textarea
                   className="flex-1"
@@ -456,6 +457,165 @@ function ServiceOrderPage() {
             )}
           </Card>
         </div>
+
+        <Dialog open={isCustomerLookupOpen} onOpenChange={setIsCustomerLookupOpen}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Pesquisar cliente</DialogTitle>
+              <DialogDescription>Selecione um cliente existente ou crie um novo cadastro.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-[10px] h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder="Digite nome, telefone ou documento..."
+                  value={customerSearchInput}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setCustomerSearchInput(value);
+                    debounceCustomerSearch(value);
+                  }}
+                />
+              </div>
+
+              {normalizedCustomerSearch.length < 2 ? (
+                <p className="text-sm text-muted-foreground">Digite ao menos 2 caracteres para pesquisar.</p>
+              ) : (
+                <div className="rounded-md border border-dashed border-violet-300 p-2">
+                  {isFetchingCustomers ? (
+                    <p className="text-sm text-muted-foreground">Buscando clientes...</p>
+                  ) : customerOptions.length > 0 ? (
+                    <div className="flex max-h-[280px] flex-col gap-1 overflow-y-auto">
+                      {customerOptions.slice(0, 5).map((customer) => (
+                        <button
+                          key={String(customer.id || customer.nome)}
+                          type="button"
+                          className="rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
+                          onClick={() => handleSelectCustomer(customer)}
+                        >
+                          <p className="font-medium">{customer.nome || 'Sem nome'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {[customer.telefone, customer.numero_documento].filter(Boolean).join(' - ') || 'Sem contato'}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhum cliente encontrado.</p>
+                  )}
+                </div>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                className="border-2 border-dashed border-violet-500 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                onClick={openCustomerCreateModal}
+              >
+                Novo cliente
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isVehicleLookupOpen} onOpenChange={setIsVehicleLookupOpen}>
+          <DialogContent className="max-w-xl">
+            <DialogHeader>
+              <DialogTitle>Pesquisar carro</DialogTitle>
+              <DialogDescription>Selecione um carro existente ou crie um novo cadastro.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-3">
+              <div className="relative">
+                <Search className="pointer-events-none absolute left-3 top-[10px] h-4 w-4 text-muted-foreground" />
+                <Input
+                  className="pl-9"
+                  placeholder="Digite placa, marca ou modelo..."
+                  value={vehicleSearchInput}
+                  onChange={(event) => {
+                    const value = event.target.value;
+                    setVehicleSearchInput(value);
+                    debounceVehicleSearch(value);
+                  }}
+                />
+              </div>
+
+              {normalizedVehicleSearch.length < 2 ? (
+                <p className="text-sm text-muted-foreground">Digite ao menos 2 caracteres para pesquisar.</p>
+              ) : (
+                <div className="rounded-md border border-dashed border-violet-300 p-2">
+                  {isFetchingVehicles ? (
+                    <p className="text-sm text-muted-foreground">Buscando carros...</p>
+                  ) : vehicleOptions.length > 0 ? (
+                    <div className="flex max-h-[280px] flex-col gap-1 overflow-y-auto">
+                      {vehicleOptions.slice(0, 5).map((vehicle) => (
+                        <button
+                          key={String(vehicle.id || vehicle.placa)}
+                          type="button"
+                          className="rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-accent"
+                          onClick={() => handleSelectVehicle(vehicle)}
+                        >
+                          <p className="font-medium">{normalizePlate(vehicle.placa) || 'Placa nao informada'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {[vehicle.marca, vehicle.modelo, vehicle.ano ? String(vehicle.ano) : ''].filter(Boolean).join(' - ') ||
+                              'Sem detalhes'}
+                          </p>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Nenhum carro encontrado.</p>
+                  )}
+                </div>
+              )}
+
+              <Button
+                type="button"
+                variant="outline"
+                className="border-2 border-dashed border-violet-500 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
+                onClick={openVehicleCreateModal}
+              >
+                Novo carro
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isCustomerCreateOpen} onOpenChange={setIsCustomerCreateOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Novo cliente</DialogTitle>
+              <DialogDescription>Preencha os mesmos campos de cliente do orcamento.</DialogDescription>
+            </DialogHeader>
+            <CustomerForm isPending={false} />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleCancelCreateCustomer}>
+                Cancelar
+              </Button>
+              <Button type="button" onClick={() => setIsCustomerCreateOpen(false)}>
+                Usar cliente
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isVehicleCreateOpen} onOpenChange={setIsVehicleCreateOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Novo carro</DialogTitle>
+              <DialogDescription>Preencha os mesmos campos de carro do orcamento.</DialogDescription>
+            </DialogHeader>
+            <VehicleForm isPending={false} />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={handleCancelCreateVehicle}>
+                Cancelar
+              </Button>
+              <Button type="button" onClick={() => setIsVehicleCreateOpen(false)}>
+                Usar carro
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <footer
           className="flex justify-end gap-4 py-4 sticky bottom-0"
