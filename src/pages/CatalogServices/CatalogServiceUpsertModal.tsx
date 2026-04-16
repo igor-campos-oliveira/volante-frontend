@@ -16,7 +16,7 @@ import {
   updateCatalogServiceAPI,
 } from "@/data/api/CatalogServicesAPI";
 import { useQueryClient } from "@tanstack/react-query";
-import { Check, Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { Controller, useFieldArray, useForm } from "react-hook-form";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -309,29 +309,21 @@ export default function CatalogServiceUpsertModal({
             name="ativo"
             control={form.control}
             render={({ field }) => (
-              <label className="mt-2 flex items-center gap-2 text-base font-medium text-zinc-700">
+              <label className="mt-2 flex cursor-pointer items-center gap-2 text-base font-medium text-zinc-700">
                 <input
                   type="checkbox"
                   checked={field.value}
                   onChange={(event) => field.onChange(event.target.checked)}
-                  className="sr-only"
+                  className="peer sr-only"
                 />
                 <span
-                  className={`relative inline-flex h-5 w-5 items-center justify-center rounded border transition-all duration-200 ease-out ${
-                    field.value
-                      ? "border-[var(--theme-highlight)] bg-white"
-                      : "border-zinc-300 bg-white"
+                  className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors duration-200 ease-out ${
+                    field.value ? "bg-[var(--theme-highlight)]" : "bg-zinc-300"
                   }`}
                 >
                   <span
-                    className={`absolute inset-0 rounded-[3px] bg-[var(--theme-highlight)] transition-transform duration-300 ease-out ${
-                      field.value ? "scale-100" : "scale-0"
-                    }`}
-                  />
-                  <Check
-                    size={13}
-                    className={`relative z-10 text-white transition-all duration-200 ease-out ${
-                      field.value ? "scale-100 opacity-100 delay-100" : "scale-75 opacity-0"
+                    className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-300 ease-out ${
+                      field.value ? "translate-x-5" : "translate-x-0"
                     }`}
                   />
                 </span>

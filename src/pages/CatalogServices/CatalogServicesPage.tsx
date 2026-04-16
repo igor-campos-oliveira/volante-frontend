@@ -36,7 +36,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
-import { Check, MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
+import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import CatalogServiceUpsertModal from "./CatalogServiceUpsertModal";
@@ -227,30 +227,26 @@ export default function CatalogServicesPage() {
             >
               <div className="flex flex-col gap-3">
                 <div className="flex items-start justify-between gap-2">
-                  <label className="flex items-center gap-2 text-sm text-zinc-600">
+                  <label
+                    className={`flex items-center gap-2 text-sm text-zinc-600 ${
+                      isTogglingStatus ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                    }`}
+                  >
                     <input
                       type="checkbox"
                       checked={service.isActive}
                       disabled={isTogglingStatus}
                       onChange={(e) => onToggleServiceStatus(service, e.target.checked)}
-                      className="sr-only"
+                      className="peer sr-only"
                     />
                     <span
-                      className={`relative inline-flex h-5 w-5 items-center justify-center rounded border transition-all duration-200 ease-out ${
-                        service.isActive
-                          ? "border-[var(--theme-highlight)] bg-white"
-                          : "border-zinc-300 bg-white"
-                      } ${isTogglingStatus ? "cursor-not-allowed opacity-60" : ""}`}
+                      className={`relative inline-flex h-5 w-10 shrink-0 rounded-full transition-colors duration-200 ease-out ${
+                        service.isActive ? "bg-[var(--theme-highlight)]" : "bg-zinc-300"
+                      }`}
                     >
                       <span
-                        className={`absolute inset-0 rounded-[3px] bg-[var(--theme-highlight)] transition-transform duration-300 ease-out ${
-                          service.isActive ? "scale-100" : "scale-0"
-                        }`}
-                      />
-                      <Check
-                        size={13}
-                        className={`relative z-10 text-white transition-all duration-200 ease-out ${
-                          service.isActive ? "scale-100 opacity-100 delay-100" : "scale-75 opacity-0"
+                        className={`absolute left-0.5 top-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform duration-300 ease-out ${
+                          service.isActive ? "translate-x-5" : "translate-x-0"
                         }`}
                       />
                     </span>
