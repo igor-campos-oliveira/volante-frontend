@@ -5,9 +5,10 @@ import {
   getServiceOrdersByCustomerId,
   saveServiceOrder,
   ServiceOrderResponse,
+  updateServiceOrderStatus,
 } from '@/data/services/orcamentoService';
 import { deleteOrcamentoItem } from '@/data/services/orcamentoItemService';
-import { ServiceOrder } from '@/pages/ServiceOrderNew/types';
+import { ServiceOrder, STATUS_SERVICE_ORDER } from '@/pages/ServiceOrderNew/types';
 
 type FilterOption = 'vehicle' | 'customer';
 
@@ -28,9 +29,17 @@ const ServiceOrderAPI = {
     return { data: savedOrder };
   },
 
+  updateStatus: async (
+    id: string | number,
+    status: STATUS_SERVICE_ORDER,
+  ) => {
+    const updatedOrder = await updateServiceOrderStatus(id, status);
+    return { data: updatedOrder };
+  },
+
   deleteItem: (itemId: string | number) => deleteOrcamentoItem(itemId),
 
-  // Alias legado para manter compatibilidade com código existente.
+  // Alias legado para manter compatibilidade com cÃ³digo existente.
   delete: (itemId: string | number) => deleteOrcamentoItem(itemId),
 
   uploadVehicleImage: ({ imageFile, orderId, description }: { imageFile: File; orderId?: string; description: string }) => {
@@ -48,4 +57,3 @@ const ServiceOrderAPI = {
 };
 
 export default ServiceOrderAPI;
-

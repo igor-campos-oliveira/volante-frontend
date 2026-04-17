@@ -1,4 +1,4 @@
-import Card from "@/components/Card";
+﻿import Card from "@/components/Card";
 import SearchPage from "@/components/SearchPage";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -193,7 +193,8 @@ export default function CustomersPage() {
         {customersData.map((customer: Costumer) => (
           <Card
             key={customer.id}
-            className="transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-12px_rgba(139,92,246,0.55)]"
+            onClick={() => openBudgetsModal(customer)}
+            className="cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-12px_rgba(139,92,246,0.55)]"
           >
             {isToday(new Date(customer.updatedAt as string)) && (
               <Card.Badge> </Card.Badge>
@@ -222,13 +223,6 @@ export default function CustomersPage() {
                     >
                       <Pencil size={16} className="mr-2" />
                       Editar
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onSelect={() => openBudgetsModal(customer)}
-                      className="cursor-pointer"
-                    >
-                      <ClipboardList size={16} className="mr-2" />
-                      Orçamentos
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       disabled={isDeleting}
@@ -289,7 +283,7 @@ export default function CustomersPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              Orçamentos de {customerToViewBudgets?.nome || "cliente"}
+              OrÃ§amentos de {customerToViewBudgets?.nome || "cliente"}
             </DialogTitle>
             <DialogDescription>
               Lista de orcamentos relacionados ao cliente selecionado.

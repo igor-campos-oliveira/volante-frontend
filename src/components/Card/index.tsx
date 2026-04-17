@@ -14,24 +14,32 @@ const useCard = () => useContext(CardContext);
 
 export default function Card({children, className, clickable = false, ...props}: IProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const handleCardClick: React.MouseEventHandler<HTMLDivElement> = (event) => {
+    if (clickable) {
+      setIsOpen((prev) => !prev);
+    }
+
+    props.onClick?.(event);
+  };
+  const isCardInteractive = clickable || Boolean(props.onClick);
 
   return (
     <CardContext.Provider value={{ isOpen }}>
       <BasicCard
         {...props}
-        onClick={clickable ? () => setIsOpen(!isOpen) : undefined}
+        onClick={isCardInteractive ? handleCardClick : undefined}
         className={`
           rounded-lg flex flex-col relative
           transition-all duration-300 overflow-hidden
 
           ${clickable && isOpen 
             ? "shadow-xl border-[--theme-highlight]" 
-            : clickable
+            : isCardInteractive
               ? "cursor-pointer active:scale-95"
               : ""
           }
 
-          ${clickable ? "hover:shadow-md hover:-translate-y-1" : ""}
+          ${isCardInteractive ? "hover:shadow-md hover:-translate-y-1" : ""}
 
           ${className}
         `}

@@ -1,5 +1,8 @@
 import Card from "@/components/Card";
 import SearchPage from "@/components/SearchPage";
+import StatusDropDown from "@/components/BadgeDropDown/BadgeDropDown";
+import CarPlate from "@/components/ui/plate";
+import SelectOption from "@/components/ui/selectOptions";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   DEBOUNCE_TIMEOUT,
@@ -8,23 +11,23 @@ import {
   USE_QUERY_CONFIGS,
 } from "@/data/constants/utils";
 import useDebounce from "@/hooks/useDebounce";
-import { isToday } from "@/lib/utils";
-import { useInfiniteQuery } from "@tanstack/react-query";
-import { ServiceOrder } from "../ServiceOrder/types";
-import { useNavigate } from "react-router-dom";
+import { currencyFormat } from "@/lib/utils";
 import { ROUTER_PATHS } from "@/routes/routes";
-import { useServiceOrderStore } from "@/hooks/useServiceOrder";
-import StatusDropDown from "@/components/BadgeDropDown/BadgeDropDown";
-import CarPlate from "@/components/ui/plate";
-import SelectOption from "@/components/ui/selectOptions";
+import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { useServiceOrderStore } from "@/hooks/useServiceOrder";
 import ServiceOrderAPI from "@/data/api/ServiceOrderAPI";
+import { ServiceOrder, STATUS_SERVICE_ORDER } from "../ServiceOrder/types";
 
 export default function SearchServiceOrdersPage() {
   const navigation = useNavigate();
   const { setServiceOrder } = useServiceOrderStore();
+  const queryClient = useQueryClient();
   const [searchValue, setSearchValue] = useDebounce({ timeout: DEBOUNCE_TIMEOUT });
   const [filter, setFilter] = useState<"customer" | "vehicle">("customer");
+  const [updatingOrderId, setUpdatingOrderId] = useState<string | number | null>(null);
 
   const {
     data: serviceOrders,
@@ -44,6 +47,16 @@ export default function SearchServiceOrdersPage() {
     },
   });
 
+  const { mutateAsync: handleUpdateStatus } = useMutation({
+    mutationFn: ({
+      serviceOrderId,
+      status,
+    }: {
+      serviceOrderId: string | number;
+      status: STATUS_SERVICE_ORDER;
+    }) => ServiceOrderAPI.updateStatus(serviceOrderId, status),
+  });
+
   const handleCardClick = async (serviceOrder: ServiceOrder) => {
     await setServiceOrder({ ...serviceOrder });
     navigation(`${ROUTER_PATHS.SERVICE_ORDER}/${serviceOrder.uuid || serviceOrder.id}`, {
@@ -51,10 +64,53 @@ export default function SearchServiceOrdersPage() {
     });
   };
 
+  const onChangeStatus = async (
+    serviceOrder: ServiceOrder,
+    nextStatus: STATUS_SERVICE_ORDER,
+  ) => {
+    const currentStatus = serviceOrder.status;
+    const serviceOrderId = serviceOrder.id ?? serviceOrder.uuid;
+
+    if (!serviceOrderId || currentStatus === nextStatus) {
+      return;
+    }
+
+    try {
+      setUpdatingOrderId(serviceOrderId);
+      await handleUpdateStatus({ serviceOrderId, status: nextStatus });
+      await queryClient.invalidateQueries({ queryKey: ["get_service_orders"] });
+      toast.success("Status do orçamento atualizado.");
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Nao foi possivel atualizar o status do orçamento.";
+      toast.error(message);
+    } finally {
+      setUpdatingOrderId(null);
+    }
+  };
+
   const serviceOrdersData = ((serviceOrders?.pages.flatMap((page) => page.data) ||
     []) as unknown) as ServiceOrder[];
   const lastUpdatedAt =
     "Última atualização: " + timestampToLocaleString(dataUpdatedAt);
+
+  const getOrderMetrics = (serviceOrder: ServiceOrder) => {
+    const items = serviceOrder?.service_order_items || serviceOrder?.items || [];
+
+    const itemsCount = items.length;
+    const totalValue = items.reduce((acc, item) => {
+      const quantity = Number(item?.quantity) || 0;
+      const value = Number(item?.value) || 0;
+      const discount = Number(item?.discount) || 0;
+      const mappedTotal = Number(item?.total);
+
+      return acc + (Number.isFinite(mappedTotal) ? mappedTotal : quantity * value - discount);
+    }, 0);
+
+    return { itemsCount, totalValue };
+  };
 
   return (
     <SearchPage>
@@ -67,7 +123,7 @@ export default function SearchServiceOrdersPage() {
         }}
       >
         <SelectOption
-          className="h-[50px] w-[120px] flex-grow-0 mr-2"
+          className="mr-2 h-[50px] w-[120px] flex-grow-0"
           containerFlex="0"
           value={filter}
           onChange={setFilter}
@@ -82,7 +138,7 @@ export default function SearchServiceOrdersPage() {
           Array.from({ length: 8 }).map((_, index) => (
             <Skeleton
               key={`service-orders-skeleton-${index}`}
-              className="h-[142px] w-full rounded-lg"
+              className="h-[192px] w-full rounded-2xl"
             />
           ))}
 
@@ -92,36 +148,63 @@ export default function SearchServiceOrdersPage() {
           </div>
         )}
 
-        {serviceOrdersData.map((serviceOrder: ServiceOrder) => (
-          <Card
-            className="capitalize"
-            key={serviceOrder?.uuid}
-            onClick={() => handleCardClick(serviceOrder)}
-          >
-            {serviceOrder?.updatedAt && isToday(new Date(serviceOrder?.updatedAt)) && (
-              <Card.Badge></Card.Badge>
-            )}
-            <Card.Header
-              title={
-                serviceOrder?.vehicle?.brand || serviceOrder?.vehicle?.model
-                  ? `${serviceOrder?.vehicle?.brand} ${serviceOrder?.vehicle?.model}`
-                  : "Sem Veículo"
-              }
-              description={serviceOrder?.customer?.name || "Cliente não identificado"}
-            />
-            <Card.Content>
-              <div className="flex justify-between">
-                <CarPlate plate={serviceOrder?.vehicle?.plate || ""} />
-                <StatusDropDown
-                  value={serviceOrder.status}
-                  options={SO_STATUS_LIST}
-                  disabled={true}
-                  onChange={() => {}}
-                />
-              </div>
-            </Card.Content>
-          </Card>
-        ))}
+        {serviceOrdersData.map((serviceOrder: ServiceOrder) => {
+          const { itemsCount, totalValue } = getOrderMetrics(serviceOrder);
+
+          return (
+            <Card
+              className="capitalize border-zinc-200/80 bg-gradient-to-b from-white to-zinc-50/60 shadow-[0_8px_28px_-18px_rgba(0,0,0,0.55)] transition-all duration-300 hover:-translate-y-1 hover:border-zinc-300 hover:shadow-[0_18px_36px_-18px_rgba(0,0,0,0.42)]"
+              key={serviceOrder?.uuid}
+              onClick={() => handleCardClick(serviceOrder)}
+            >
+              <Card.Header
+                title={
+                  serviceOrder?.vehicle?.brand || serviceOrder?.vehicle?.model
+                    ? `${serviceOrder?.vehicle?.brand} ${serviceOrder?.vehicle?.model}`
+                    : "Sem Veículo"
+                }
+                description={serviceOrder?.customer?.name || "Cliente não identificado"}
+              >
+                <Card.HeaderActions>
+                  <div onClick={(e) => e.stopPropagation()}>
+                    <StatusDropDown
+                      title="Atualizar status"
+                      value={serviceOrder.status}
+                      options={SO_STATUS_LIST}
+                      disabled={updatingOrderId === (serviceOrder.id ?? serviceOrder.uuid)}
+                      onChange={(value) =>
+                        onChangeStatus(serviceOrder, value as STATUS_SERVICE_ORDER)
+                      }
+                    />
+                  </div>
+                </Card.HeaderActions>
+              </Card.Header>
+
+              <Card.Content>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <CarPlate plate={serviceOrder?.vehicle?.plate || ""} />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-xl border border-zinc-200 bg-white/70 p-2.5">
+                      <p className="text-[11px] tracking-[0.08em] text-zinc-500">VALOR TOTAL</p>
+                      <p className="mt-1 text-sm font-semibold text-zinc-900">
+                        {currencyFormat(totalValue, "currency")}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-zinc-200 bg-white/70 p-2.5">
+                      <p className="text-[11px] tracking-[0.08em] text-zinc-500">ITENS</p>
+                      <p className="mt-1 text-sm font-semibold text-zinc-900">
+                        {itemsCount} {itemsCount === 1 ? "item" : "itens"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </Card.Content>
+            </Card>
+          );
+        })}
       </Card.Container>
       <SearchPage.LoadMore
         visible={hasNextPage}

@@ -47,6 +47,17 @@ interface VehicleRow {
   chassi?: string;
 }
 
+interface OrcamentoItemRow {
+  id: number;
+  descricao: string | null;
+  tipo: string | null;
+  valor: number | null;
+  quantidade: number | null;
+  observacao: string | null;
+  desconto: number | null;
+  orcamento_id: number | null;
+}
+
 interface ServiceOrderMeta {
   page: number;
   totalPages: number;
@@ -76,6 +87,11 @@ const normalizePlate = (plate?: string | null) =>
 const parseNumericId = (value?: string | number | null) => {
   const parsed = Number(value);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : undefined;
+};
+
+const toNumber = (value: unknown, fallback = 0) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 };
 
 const toDateInputValue = (value?: string | null) => (value ? String(value).substring(0, 10) : '');
@@ -196,6 +212,46 @@ const loadVehiclesMap = async (plates: string[]) => {
   return map;
 };
 
+const mapItemRowToServiceOrderItem = (row: OrcamentoItemRow): ServiceOrder['service_order_items'][number] => {
+  const quantity = toNumber(row.quantidade, 1);
+  const value = toNumber(row.valor, 0);
+  const discount = toNumber(row.desconto, 0);
+
+  return {
+    uuid: String(row.id),
+    description: row.descricao ?? '',
+    type: row.tipo ?? 'BODYWORK',
+    quantity,
+    value,
+    discount,
+    insurance_coverage: 0,
+    total: quantity * value - discount,
+  };
+};
+
+const loadItemsByOrderIds = async (orderIds: number[]) => {
+  if (!orderIds.length) return new Map<number, ServiceOrder['service_order_items']>();
+
+  const { data, error } = await fromSchema('itens_orcamento')
+    .select('*')
+    .in('orcamento_id', orderIds);
+
+  if (error) throw error;
+
+  const itemsMap = new Map<number, ServiceOrder['service_order_items']>();
+
+  ((data ?? []) as OrcamentoItemRow[]).forEach((item) => {
+    const orderId = parseNumericId(item.orcamento_id);
+    if (!orderId) return;
+
+    const mappedItem = mapItemRowToServiceOrderItem(item);
+    const currentItems = itemsMap.get(orderId) ?? [];
+    itemsMap.set(orderId, [...currentItems, mappedItem]);
+  });
+
+  return itemsMap;
+};
+
 const normalizeDateTime = (dateValue?: string) => (dateValue ? `${dateValue}T00:00:00+00:00` : null);
 
 const hasAnyCustomerData = (customer?: CustomerSchema) =>
@@ -304,14 +360,20 @@ export async function getServiceOrders(searchValue = '', page = 1, filter: Filte
 
   const orders = (data ?? []) as OrcamentoRow[];
   const customerIds = Array.from(new Set(orders.map((order) => order.cliente_id).filter((id): id is number => id !== null)));
+  const orderIds = Array.from(new Set(orders.map((order) => order.id).filter((id): id is number => Number.isFinite(id))));
   const plates = Array.from(new Set(orders.map((order) => normalizePlate(order.placa)).filter(Boolean)));
 
-  const [customersMap, vehiclesMap] = await Promise.all([loadCustomersMap(customerIds), loadVehiclesMap(plates)]);
+  const [customersMap, vehiclesMap, itemsMap] = await Promise.all([
+    loadCustomersMap(customerIds),
+    loadVehiclesMap(plates),
+    loadItemsByOrderIds(orderIds),
+  ]);
 
   const mappedOrders = orders.map((order) => {
     const customer = order.cliente_id ? customersMap.get(String(order.cliente_id)) : undefined;
     const vehicle = vehiclesMap.get(normalizePlate(order.placa));
-    return mapOrderRowToServiceOrder({ order, customer, vehicle });
+    const serviceOrderItems = itemsMap.get(order.id) ?? [];
+    return mapOrderRowToServiceOrder({ order, customer, vehicle, serviceOrderItems });
   });
 
   return {
@@ -381,6 +443,29 @@ export async function getServiceOrderById(id: string | number): Promise<ServiceO
     vehicle: vehicleResult.data ?? undefined,
     serviceOrderItems: items,
   });
+}
+
+export async function updateServiceOrderStatus(
+  id: string | number,
+  status: STATUS_SERVICE_ORDER,
+): Promise<ServiceOrder> {
+  const parsedId = parseNumericId(id);
+  if (!parsedId) {
+    throw new Error('ID do orçamento inválido para atualizar status.');
+  }
+
+  const isValidStatus = Object.values(STATUS_SERVICE_ORDER).includes(status);
+  if (!isValidStatus) {
+    throw new Error('Status de orçamento inválido.');
+  }
+
+  const { error } = await fromSchema(ORCAMENTOS_TABLE)
+    .update({ status })
+    .eq('id', parsedId);
+
+  if (error) throw error;
+
+  return getServiceOrderById(parsedId);
 }
 
 export async function saveServiceOrder(serviceOrder: ServiceOrder): Promise<ServiceOrder> {
