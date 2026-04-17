@@ -368,13 +368,13 @@ function ServiceOrderPage() {
                 </Button>
                 <Button type="button" variant="outline" onClick={() => setIsVehicleLookupOpen(true)}>
                   <Search size={16} className="mr-2" />
-                  Pesquisar carro
+                  Pesquisar veículos
                 </Button>
               </div>
 
               <Card
-                className={`rounded-3xl p-4 h-[140px] overflow-hidden border-2 border-dashed ${
-                  hasSelectedCustomer ? 'border-violet-300 bg-white' : 'border-zinc-300 bg-zinc-100'
+                className={`rounded-3xl p-4 h-[140px] overflow-hidden ${
+                  hasSelectedCustomer ? 'bg-white' : 'border-zinc-300 bg-zinc-100'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -404,12 +404,12 @@ function ServiceOrderPage() {
               </Card>
 
               <Card
-                className={`rounded-3xl p-4 h-[140px] overflow-hidden border-2 border-dashed ${
-                  hasSelectedVehicle ? 'border-violet-300 bg-white' : 'border-zinc-300 bg-zinc-100'
+                className={`rounded-3xl p-4 h-[140px] overflow-hidden ${
+                  hasSelectedVehicle ? 'bg-white' : 'border-zinc-300 bg-zinc-100'
                 }`}
               >
                 <div className="flex items-center justify-between">
-                  <p className="text-sm font-semibold">Carro</p>
+                  <p className="text-sm font-semibold">Veículos</p>
                   <Button
                     type="button"
                     variant="ghost"
@@ -417,7 +417,7 @@ function ServiceOrderPage() {
                     className="h-7 w-7 transition-colors hover:bg-blue-50 hover:text-blue-600"
                     disabled={!previousVehicleSelection}
                     onClick={handleRestorePreviousVehicle}
-                    aria-label="Voltar para carro anterior"
+                    aria-label="Voltar para veículo anterior"
                     title="Voltar selecao"
                   >
                     <ArrowLeft size={14} />
@@ -430,7 +430,7 @@ function ServiceOrderPage() {
                     <p className="truncate">{vehicleSummary?.year || 'Ano nao informado'}</p>
                   </div>
                 ) : (
-                  <p className="mt-2 text-sm text-muted-foreground">Nenhum carro selecionado.</p>
+                  <p className="mt-2 text-sm text-muted-foreground">Nenhum veículo selecionado.</p>
                 )}
               </Card>
               <Card className="flex flex-1 flex-col p-4 rounded-3xl gap-1">
@@ -444,7 +444,7 @@ function ServiceOrderPage() {
             </form>
           </section>
 
-          <p className="text-md font-bold pl-4">Imagens do Veiculo</p>
+          <p className="text-md font-bold pl-4">Imagens do Veículo</p>
           <Card className="p-4 rounded-3xl">
             {isLoadingImages ? (
               <div className="space-y-3">
@@ -522,8 +522,8 @@ function ServiceOrderPage() {
         <Dialog open={isVehicleLookupOpen} onOpenChange={setIsVehicleLookupOpen}>
           <DialogContent className="max-w-xl">
             <DialogHeader>
-              <DialogTitle>Pesquisar carro</DialogTitle>
-              <DialogDescription>Selecione um carro existente ou crie um novo cadastro.</DialogDescription>
+              <DialogTitle>Pesquisar veículos</DialogTitle>
+              <DialogDescription>Selecione um veículo existente ou crie um novo cadastro.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-3">
               <div className="relative">
@@ -545,7 +545,7 @@ function ServiceOrderPage() {
               ) : (
                 <div className="rounded-md border border-dashed border-violet-300 p-2">
                   {isFetchingVehicles ? (
-                    <p className="text-sm text-muted-foreground">Buscando carros...</p>
+                    <p className="text-sm text-muted-foreground">Buscando veículos...</p>
                   ) : vehicleOptions.length > 0 ? (
                     <div className="flex max-h-[280px] flex-col gap-1 overflow-y-auto">
                       {vehicleOptions.slice(0, 5).map((vehicle) => (
@@ -564,7 +564,7 @@ function ServiceOrderPage() {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-sm text-muted-foreground">Nenhum carro encontrado.</p>
+                    <p className="text-sm text-muted-foreground">Nenhum veículo encontrado.</p>
                   )}
                 </div>
               )}
@@ -575,7 +575,7 @@ function ServiceOrderPage() {
                 className="border-2 border-dashed border-violet-500 text-violet-700 hover:bg-violet-50 hover:text-violet-800"
                 onClick={openVehicleCreateModal}
               >
-                Novo carro
+                Novo veículo
               </Button>
             </div>
           </DialogContent>
@@ -593,7 +593,8 @@ function ServiceOrderPage() {
                 Cancelar
               </Button>
               <Button type="button" onClick={() => setIsCustomerCreateOpen(false)}>
-                Usar cliente
+                <Save size={18} className="mr-2" />
+                Salvar
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -602,8 +603,8 @@ function ServiceOrderPage() {
         <Dialog open={isVehicleCreateOpen} onOpenChange={setIsVehicleCreateOpen}>
           <DialogContent className="max-w-2xl">
             <DialogHeader>
-              <DialogTitle>Novo carro</DialogTitle>
-              <DialogDescription>Preencha os mesmos campos de carro do orcamento.</DialogDescription>
+              <DialogTitle>Novo veículo</DialogTitle>
+              <DialogDescription>Preencha os mesmos campos de veículo do orcamento.</DialogDescription>
             </DialogHeader>
             <VehicleForm isPending={false} />
             <DialogFooter>
@@ -611,7 +612,8 @@ function ServiceOrderPage() {
                 Cancelar
               </Button>
               <Button type="button" onClick={() => setIsVehicleCreateOpen(false)}>
-                Usar carro
+                <Save size={18} className="mr-2" />
+                Salvar
               </Button>
             </DialogFooter>
           </DialogContent>

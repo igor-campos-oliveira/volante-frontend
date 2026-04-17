@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getCatalogAPI } from "@/data/api/CatalogAPI";
 import { USE_QUERY_CONFIGS } from "@/data/constants/utils";
 import useDebounce from "@/hooks/useDebounce";
-import { currencyFormat, isToday } from "@/lib/utils";
+import { currencyFormat, isToday, sortByCreatedAtDesc } from "@/lib/utils";
 import { useInfiniteQuery } from "@tanstack/react-query";
 
 export default function CatalogPage() {
@@ -21,6 +21,7 @@ export default function CatalogPage() {
     });
 
   const catalogData = data?.pages.flatMap((page) => page.data) || [];
+  const sortedCatalogData = sortByCreatedAtDesc(catalogData);
 
   return (
     <SearchPage>
@@ -40,13 +41,13 @@ export default function CatalogPage() {
             />
           ))}
 
-        {!isLoading && catalogData.length === 0 && (
+        {!isLoading && sortedCatalogData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum item encontrado.
           </div>
         )}
 
-        {catalogData.map((item: any) => (
+        {sortedCatalogData.map((item: any) => (
           <Card className="min-w-[300px]" key={item.id}>
             {isToday(new Date(item.createdAt)) && <Card.Badge>Novo</Card.Badge>}
             <Card.Header

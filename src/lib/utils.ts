@@ -24,6 +24,32 @@ export const isToday = (date: Date) => {
   return date.getFullYear() === today.getFullYear() && date.getMonth() === today.getMonth() && date.getDate() === today.getDate();
 }
 
+type CreatedAtSortable = {
+  createdAt?: string | null;
+  createdat?: string | null;
+  created_at?: string | null;
+  data_criacao?: string | null;
+  updatedAt?: string | null;
+};
+
+const toTimestamp = (value?: string | null) => {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isFinite(timestamp) ? timestamp : 0;
+};
+
+const getCreatedAtValue = <T extends CreatedAtSortable>(item: T) =>
+  item.createdAt ??
+  item.createdat ??
+  item.created_at ??
+  item.data_criacao ??
+  item.updatedAt;
+
+export const sortByCreatedAtDesc = <T extends CreatedAtSortable>(items: T[]) =>
+  [...items].sort(
+    (a, b) => toTimestamp(getCreatedAtValue(b)) - toTimestamp(getCreatedAtValue(a)),
+  );
+
 export function validateCPF(cpf: string): boolean {
   cpf = cpf.replace(/[^\d]+/g, '');
   if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;

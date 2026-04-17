@@ -8,7 +8,7 @@ import {
   USE_QUERY_CONFIGS,
 } from "@/data/constants/utils";
 import useDebounce from "@/hooks/useDebounce";
-import { isToday } from "@/lib/utils";
+import { isToday, sortByCreatedAtDesc } from "@/lib/utils";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Home, Mail, Phone } from "lucide-react";
 
@@ -35,6 +35,7 @@ export default function CustomersPage() {
   });
 
   const customersData = customers?.pages.flatMap((page) => page.data) || [];
+  const sortedCustomersData = sortByCreatedAtDesc(customersData);
   const lastUpdatedAt =
     "Última atualização: " + timestampToLocaleString(dataUpdatedAt);
 
@@ -57,13 +58,13 @@ export default function CustomersPage() {
             />
           ))}
 
-        {!isLoading && customersData.length === 0 && (
+        {!isLoading && sortedCustomersData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum cliente encontrado.
           </div>
         )}
 
-        {customersData.map((customer: any) => (
+        {sortedCustomersData.map((customer: any) => (
           <Card key={customer.id}>
             {isToday(new Date(customer.updatedAt)) && <Card.Badge> </Card.Badge>}
             <Card.Header

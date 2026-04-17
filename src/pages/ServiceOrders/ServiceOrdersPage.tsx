@@ -11,7 +11,7 @@ import {
   USE_QUERY_CONFIGS,
 } from "@/data/constants/utils";
 import useDebounce from "@/hooks/useDebounce";
-import { currencyFormat } from "@/lib/utils";
+import { currencyFormat, sortByCreatedAtDesc } from "@/lib/utils";
 import { ROUTER_PATHS } from "@/routes/routes";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -93,6 +93,7 @@ export default function SearchServiceOrdersPage() {
 
   const serviceOrdersData = ((serviceOrders?.pages.flatMap((page) => page.data) ||
     []) as unknown) as ServiceOrder[];
+  const sortedServiceOrdersData = sortByCreatedAtDesc(serviceOrdersData);
   const lastUpdatedAt =
     "Última atualização: " + timestampToLocaleString(dataUpdatedAt);
 
@@ -142,18 +143,18 @@ export default function SearchServiceOrdersPage() {
             />
           ))}
 
-        {!isLoading && serviceOrdersData.length === 0 && (
+        {!isLoading && sortedServiceOrdersData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum orçamento encontrado.
           </div>
         )}
 
-        {serviceOrdersData.map((serviceOrder: ServiceOrder) => {
+        {sortedServiceOrdersData.map((serviceOrder: ServiceOrder) => {
           const { itemsCount, totalValue } = getOrderMetrics(serviceOrder);
 
           return (
             <Card
-              className="capitalize border-zinc-200/80 bg-gradient-to-b from-white to-zinc-50/60 shadow-[0_8px_28px_-18px_rgba(0,0,0,0.55)] transition-all duration-300 hover:-translate-y-1 hover:border-zinc-300 hover:shadow-[0_18px_36px_-18px_rgba(0,0,0,0.42)]"
+              className="capitalize border-zinc-200/80 bg-gradient-to-b from-white to-zinc-50/60 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-12px_rgba(139,92,246,0.55)]"
               key={serviceOrder?.uuid}
               onClick={() => handleCardClick(serviceOrder)}
             >

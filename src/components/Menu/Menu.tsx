@@ -44,7 +44,7 @@ const Menu = ({links}: MenuProps) => {
     return (
         <nav className={cn(
           "select-none flex items-center gap-4 justify-center px-4 pt-4 md:gap-3 md:flex-col md:py-6 md:px-3 md:items-stretch md:overflow-hidden md:transition-[width] md:duration-500 md:[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
-          isCollapsed ? "md:w-[92px]" : "md:w-[244px]"
+          isCollapsed ? "md:w-[92px]" : "md:w-[208px]"
         )}>
             <div className="hidden md:flex justify-end">
               <button

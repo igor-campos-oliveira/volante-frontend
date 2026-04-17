@@ -30,7 +30,7 @@ import {
 import { CAR_FUELS } from "@/data/constants/carBrands";
 import { COLORS } from "@/data/constants/colors";
 import useDebounce from "@/hooks/useDebounce";
-import { isToday } from "@/lib/utils";
+import { isToday, sortByCreatedAtDesc } from "@/lib/utils";
 import {
   useInfiniteQuery,
   useMutation,
@@ -81,6 +81,7 @@ export default function VehiclesPage() {
   });
 
   const vehiclesData = vehicles?.pages.flatMap((page) => page.data) || [];
+  const sortedVehiclesData = sortByCreatedAtDesc(vehiclesData);
   const lastUpdatedAt =
     "Ultima atualizacao: " + timestampToLocaleString(dataUpdatedAt);
 
@@ -155,12 +156,12 @@ export default function VehiclesPage() {
             />
           ))}
 
-        {!isLoading && vehiclesData.length === 0 && (
+        {!isLoading && sortedVehiclesData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum veiculo encontrado.
           </div>
         )}
-        {vehiclesData.map((vehicle: Vehicle) => {
+        {sortedVehiclesData.map((vehicle: Vehicle) => {
           const normalizedColor = normalize(vehicle.cor);
           const normalizedFuel = normalize(vehicle.combustivel);
 

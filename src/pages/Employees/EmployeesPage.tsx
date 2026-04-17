@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { sortByCreatedAtDesc } from "@/lib/utils";
 import EmployeeUpsertModal from "./EmployeeUpsertModal";
 
 const digitsOnly = (value?: string | null) => String(value ?? "").replace(/\D/g, "");
@@ -91,6 +92,7 @@ export default function EmployeesPage() {
   });
 
   const employeesData = employees?.pages.flatMap((page) => page.data) || [];
+  const sortedEmployeesData = sortByCreatedAtDesc(employeesData);
   const lastUpdatedAt =
     "Ultima atualizacao: " + timestampToLocaleString(dataUpdatedAt);
 
@@ -166,13 +168,13 @@ export default function EmployeesPage() {
             />
           ))}
 
-        {!isLoading && employeesData.length === 0 && (
+        {!isLoading && sortedEmployeesData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum funcionario encontrado.
           </div>
         )}
 
-        {employeesData.map((employee: Employee) => (
+        {sortedEmployeesData.map((employee: Employee) => (
           <Card
             key={employee.id}
             className="break-inside-avoid transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-12px_rgba(139,92,246,0.55)]"

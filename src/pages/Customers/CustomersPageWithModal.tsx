@@ -9,6 +9,7 @@ import {
 } from "@/data/api/CustomersAPI";
 import {
   DEBOUNCE_TIMEOUT,
+  SO_STATUS_LIST,
   timestampToLocaleString,
   USE_QUERY_CONFIGS,
 } from "@/data/constants/utils";
@@ -27,7 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import useDebounce from "@/hooks/useDebounce";
-import { isToday } from "@/lib/utils";
+import { isToday, sortByCreatedAtDesc } from "@/lib/utils";
 import {
   useInfiniteQuery,
   useMutation,
@@ -85,8 +86,11 @@ export default function CustomersPage() {
   });
 
   const customersData = customers?.pages.flatMap((page) => page.data) || [];
+  const sortedCustomersData = sortByCreatedAtDesc(customersData);
   const lastUpdatedAt =
     "Ultima atualizacao: " + timestampToLocaleString(dataUpdatedAt);
+  const getStatusOption = (status?: string | null) =>
+    SO_STATUS_LIST.find((item) => item.value === status);
 
   const {
     data: customerBudgets = [],
@@ -97,6 +101,7 @@ export default function CustomersPage() {
     queryFn: () => ServiceOrderAPI.getByCustomerId(customerToViewBudgets?.id as string),
     enabled: Boolean(customerToViewBudgets?.id),
   });
+  const sortedCustomerBudgets = sortByCreatedAtDesc(customerBudgets);
 
   const openCreateModal = () => {
     setEditingCustomer(null);
@@ -185,12 +190,12 @@ export default function CustomersPage() {
             />
           ))}
 
-        {!isLoading && customersData.length === 0 && (
+        {!isLoading && sortedCustomersData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum cliente encontrado.
           </div>
         )}
-        {customersData.map((customer: Costumer) => (
+        {sortedCustomersData.map((customer: Costumer) => (
           <Card
             key={customer.id}
             onClick={() => openBudgetsModal(customer)}
@@ -306,38 +311,53 @@ export default function CustomersPage() {
 
             {!isLoadingBudgets &&
               !isFetchingBudgets &&
-              customerBudgets.map((serviceOrder) => (
-                <button
-                  key={serviceOrder.uuid || serviceOrder.id}
-                  type="button"
-                  onClick={() => openBudget(serviceOrder as ServiceOrder)}
-                  className="w-full rounded-lg border p-3 text-left transition hover:bg-muted"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-medium">
-                      Orcamento #{serviceOrder.uuid || serviceOrder.id}
-                    </p>
-                    <span className="rounded-full bg-muted px-2 py-1 text-xs">
-                      {serviceOrder.status?.replace(/_/g, " ") || "sem status"}
-                    </span>
-                  </div>
-                  <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
-                    <p className="flex items-center gap-1">
-                      <Car size={14} />
-                      {serviceOrder?.vehicle?.brand || serviceOrder?.vehicle?.model
-                        ? `${serviceOrder?.vehicle?.brand || ""} ${serviceOrder?.vehicle?.model || ""}`.trim()
-                        : "Veiculo nao informado"}
-                    </p>
-                    <p className="flex items-center gap-1">
-                      <ClipboardList size={14} />
-                      Placa: {serviceOrder?.vehicle?.plate || "nao informada"}
-                    </p>
-                  </div>
-                </button>
-              ))}
+              sortedCustomerBudgets.map((serviceOrder) => {
+                const statusOption = getStatusOption(serviceOrder.status);
+
+                return (
+                  <button
+                    key={serviceOrder.uuid || serviceOrder.id}
+                    type="button"
+                    onClick={() => openBudget(serviceOrder as ServiceOrder)}
+                    className="w-full rounded-lg border p-3 text-left transition hover:bg-muted"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-medium">
+                        Orcamento #{serviceOrder.uuid || serviceOrder.id}
+                      </p>
+                      <span
+                        className={`rounded-full px-2 py-1 text-xs font-medium ${statusOption
+                          ? `${statusOption.color} text-white`
+                          : "bg-muted text-muted-foreground"}`}
+                      >
+                        {statusOption?.label ||
+                          serviceOrder.status?.replace(/_/g, " ") ||
+                          "sem status"}
+                      </span>
+                    </div>
+                    <div className="mt-2 grid gap-1 text-xs text-muted-foreground sm:grid-cols-2">
+                      <p className="flex items-center gap-1">
+                        <Car size={14} />
+                        {serviceOrder?.vehicle?.brand || serviceOrder?.vehicle?.model
+                          ? `${serviceOrder?.vehicle?.brand || ""} ${serviceOrder?.vehicle?.model || ""}`.trim()
+                          : "Veiculo nao informado"}
+                      </p>
+                      <p className="flex items-center gap-1">
+                        <ClipboardList size={14} />
+                        Placa: {serviceOrder?.vehicle?.plate || "nao informada"}
+                      </p>
+                    </div>
+                  </button>
+                );
+              })}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={closeBudgetsModal}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={closeBudgetsModal}
+              className="transition-colors hover:border-black hover:bg-black hover:text-white"
+            >
               Fechar
             </Button>
           </DialogFooter>

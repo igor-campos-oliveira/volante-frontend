@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getSupplierAPI } from "@/data/api/SupplierAPI";
 import { USE_QUERY_CONFIGS } from "@/data/constants/utils";
 import useDebounce from "@/hooks/useDebounce";
-import { isToday } from "@/lib/utils";
+import { isToday, sortByCreatedAtDesc } from "@/lib/utils";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Mail, Phone } from "lucide-react";
 
@@ -27,6 +27,7 @@ export default function SupplierPage() {
     },
   });
   const supplierData = squad?.pages.flatMap((page) => page.data) || [];
+  const sortedSupplierData = sortByCreatedAtDesc(supplierData);
 
   return (
     <SearchPage>
@@ -46,13 +47,13 @@ export default function SupplierPage() {
             />
           ))}
 
-        {!isLoading && supplierData.length === 0 && (
+        {!isLoading && sortedSupplierData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum fornecedor encontrado.
           </div>
         )}
 
-        {supplierData.map((supplier: any) => (
+        {sortedSupplierData.map((supplier: any) => (
           <Card className="min-h-[110px]" key={supplier.id}>
             {isToday(new Date(supplier.createdAt)) && <Card.Badge>Novo</Card.Badge>}
             <Card.Header

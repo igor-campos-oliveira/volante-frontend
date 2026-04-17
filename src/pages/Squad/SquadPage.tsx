@@ -4,7 +4,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getSquadAPI } from "@/data/api/SquadAPI";
 import { USE_QUERY_CONFIGS } from "@/data/constants/utils";
 import useDebounce from "@/hooks/useDebounce";
-import { isToday } from "@/lib/utils";
+import { isToday, sortByCreatedAtDesc } from "@/lib/utils";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Mail, Phone } from "lucide-react";
 
@@ -27,6 +27,7 @@ export default function SquadPage() {
     },
   });
   const squadData = squad?.pages.flatMap((page) => page.data) || [];
+  const sortedSquadData = sortByCreatedAtDesc(squadData);
 
   return (
     <SearchPage>
@@ -46,13 +47,13 @@ export default function SquadPage() {
             />
           ))}
 
-        {!isLoading && squadData.length === 0 && (
+        {!isLoading && sortedSquadData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum membro encontrado.
           </div>
         )}
 
-        {squadData.map((squadMember: any) => (
+        {sortedSquadData.map((squadMember: any) => (
           <Card className="min-h-[110px]" key={squadMember.id}>
             {isToday(new Date(squadMember.createdAt)) && <Card.Badge>Novo</Card.Badge>}
             <Card.Header

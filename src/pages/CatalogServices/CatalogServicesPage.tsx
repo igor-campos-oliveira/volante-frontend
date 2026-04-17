@@ -39,6 +39,7 @@ import {
 import { MoreVertical, Pencil, Plus, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { sortByCreatedAtDesc } from "@/lib/utils";
 import CatalogServiceUpsertModal from "./CatalogServiceUpsertModal";
 
 const SERVICE_TYPE_OPTIONS = CAR_SERVICES.filter((service) => service.value !== "PARTS");
@@ -91,6 +92,7 @@ export default function CatalogServicesPage() {
   });
 
   const servicesData = services?.pages.flatMap((page) => page.data) || [];
+  const sortedServicesData = sortByCreatedAtDesc(servicesData);
   const lastUpdatedAt =
     "Ultima atualizacao: " + timestampToLocaleString(dataUpdatedAt);
 
@@ -201,13 +203,13 @@ export default function CatalogServicesPage() {
             />
           ))}
 
-        {!isLoading && servicesData.length === 0 && (
+        {!isLoading && sortedServicesData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
             Nenhum servico encontrado.
           </div>
         )}
 
-        {servicesData.map((service) => {
+        {sortedServicesData.map((service) => {
           const normalizedServiceType = normalizeText(service.type || "");
           const normalizedServiceTypeKey = normalizeValueKey(service.type || "");
           const serviceType = CAR_SERVICES.find(
