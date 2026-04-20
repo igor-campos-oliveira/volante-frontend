@@ -91,11 +91,11 @@ const Menu = ({links}: MenuProps) => {
                     </NavLink>
                 ))}
             </ol>
-            <div className="hidden md:flex md:w-full md:flex-col md:items-center md:gap-1 md:pb-1">
+            <div className="hidden md:flex md:w-full md:items-center md:justify-center md:pb-1">
               <div
                 className={cn(
-                  "flex w-full items-center gap-2 overflow-hidden transition-[max-height,opacity,transform] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
-                  isCollapsed ? "max-h-0 opacity-0 -translate-y-2 delay-0" : "max-h-12 opacity-100 translate-y-0 delay-150"
+                  "flex w-full items-center overflow-hidden transition-[gap,justify-content] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
+                  isCollapsed ? "justify-center gap-0" : "justify-center gap-2"
                 )}
               >
                 <Avatar className="h-10 w-10 shrink-0">
@@ -103,24 +103,29 @@ const Menu = ({links}: MenuProps) => {
                     {avatarFallback}
                   </AvatarFallback>
                 </Avatar>
-                <p
-                  className="min-w-0 truncate text-xs text-zinc-500"
-                  title={userEmail ?? ""}
+                <div
+                  className={cn(
+                    "min-w-0 overflow-hidden transition-[max-width,opacity,transform] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
+                    isCollapsed
+                      ? "max-w-0 opacity-0 -translate-x-2 delay-0"
+                      : "max-w-[132px] opacity-100 translate-x-0 delay-100"
+                  )}
                   aria-hidden={isCollapsed}
                 >
-                  {userEmail ?? "sem-email@informado.com"}
-                </p>
+                  <p
+                    className="truncate text-left text-xs text-zinc-500"
+                    title={userEmail ?? ""}
+                  >
+                    {userEmail ?? "sem-email@informado.com"}
+                  </p>
+                  <p
+                    className="truncate text-left text-[11px] text-zinc-400"
+                    title={userCompanyName ?? ""}
+                  >
+                    {userCompanyName ?? "empresa-nao-informada"}
+                  </p>
+                </div>
               </div>
-              <p
-                className={cn(
-                  "w-full overflow-hidden whitespace-nowrap text-center text-[11px] text-zinc-400 transition-[max-height,opacity,transform] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
-                  isCollapsed ? "max-h-0 opacity-0 -translate-y-2 delay-0" : "max-h-8 opacity-100 translate-y-0 delay-200"
-                )}
-                title={userCompanyName ?? ""}
-                aria-hidden={isCollapsed}
-              >
-                {userCompanyName ?? "empresa-nao-informada"}
-              </p>
             </div>
             <ConfirmButton 
                 variant={"link"}
