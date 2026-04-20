@@ -35,7 +35,7 @@ interface MenuProps {
 
 const Menu = ({links}: MenuProps) => {
     const [isCollapsed, setIsCollapsed] = useState(false);
-    const { logout, userEmail } = useAuthContext();
+    const { logout, userEmail, userCompanyName } = useAuthContext();
     const avatarFallback = useMemo(() => {
       if (!userEmail) return "?";
       return userEmail.trim().charAt(0).toUpperCase() || "?";
@@ -91,21 +91,35 @@ const Menu = ({links}: MenuProps) => {
                     </NavLink>
                 ))}
             </ol>
-            <div className="hidden md:flex md:flex-col md:items-center md:gap-2 md:pb-1">
-              <Avatar className="h-10 w-10">
-                <AvatarFallback className="bg-[--theme-highlight-100] text-[--theme-highlight]">
-                  {avatarFallback}
-                </AvatarFallback>
-              </Avatar>
+            <div className="hidden md:flex md:w-full md:flex-col md:items-center md:gap-1 md:pb-1">
+              <div
+                className={cn(
+                  "flex w-full items-center gap-2 overflow-hidden transition-[max-height,opacity,transform] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
+                  isCollapsed ? "max-h-0 opacity-0 -translate-y-2 delay-0" : "max-h-12 opacity-100 translate-y-0 delay-150"
+                )}
+              >
+                <Avatar className="h-10 w-10 shrink-0">
+                  <AvatarFallback className="bg-[--theme-highlight-100] text-[--theme-highlight]">
+                    {avatarFallback}
+                  </AvatarFallback>
+                </Avatar>
+                <p
+                  className="min-w-0 truncate text-xs text-zinc-500"
+                  title={userEmail ?? ""}
+                  aria-hidden={isCollapsed}
+                >
+                  {userEmail ?? "sem-email@informado.com"}
+                </p>
+              </div>
               <p
                 className={cn(
-                  "max-w-full overflow-hidden whitespace-nowrap text-center text-xs text-zinc-500 transition-[max-height,opacity,transform] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
-                  isCollapsed ? "max-h-0 opacity-0 -translate-y-2 delay-0" : "max-h-8 opacity-100 translate-y-0 delay-150"
+                  "w-full overflow-hidden whitespace-nowrap text-center text-[11px] text-zinc-400 transition-[max-height,opacity,transform] duration-500 [transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
+                  isCollapsed ? "max-h-0 opacity-0 -translate-y-2 delay-0" : "max-h-8 opacity-100 translate-y-0 delay-200"
                 )}
-                title={userEmail ?? ""}
+                title={userCompanyName ?? ""}
                 aria-hidden={isCollapsed}
               >
-                {userEmail ?? "sem-email@informado.com"}
+                {userCompanyName ?? "empresa-nao-informada"}
               </p>
             </div>
             <ConfirmButton 
