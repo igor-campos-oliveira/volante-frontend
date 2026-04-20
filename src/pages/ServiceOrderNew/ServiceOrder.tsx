@@ -1,5 +1,5 @@
 import { ArrowLeft, Check, File, Save, Search, X } from 'lucide-react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CustomerForm } from '@/components/FormSheet/Customer';
 import { VehicleForm } from '@/components/FormSheet/Vehicle';
@@ -48,10 +48,42 @@ const normalizeDate = (value?: string) => (value ? String(value).substring(0, 10
 
 const createLocalItemId = () => `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 const normalizePlate = (plate?: string | null) => String(plate || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+const IMAGE_UPLOAD_LIMIT = 12;
+const getImageFileKey = (file: File) => `${file.name}-${file.size}-${file.lastModified}`;
+const getServiceOrderId = (serviceOrder?: Partial<ServiceOrder>) =>
+  String(serviceOrder?.id || serviceOrder?.uuid || '');
 const hasCustomerData = (customer?: ServiceOrder['customer']) =>
   Boolean(customer?.id || customer?.name || customer?.cpf || customer?.phone || customer?.email || customer?.address);
 const hasVehicleData = (vehicle?: ServiceOrder['vehicle']) =>
   Boolean(vehicle?.id || vehicle?.plate || vehicle?.brand || vehicle?.model || vehicle?.year);
+const getApiErrorMessage = (error: unknown, fallback: string) => {
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') {
+    const responseData = (error as { response?: { data?: { message?: string; error?: string } } })?.response?.data;
+    if (responseData?.message) return responseData.message;
+    if (responseData?.error) return responseData.error;
+    if ((error as Error).message) return (error as Error).message;
+  }
+  return fallback;
+};
+const logDetailedError = (context: string, error: unknown, details?: Record<string, unknown>) => {
+  const apiError = error as {
+    message?: string;
+    code?: string;
+    config?: { url?: string; method?: string };
+    response?: { status?: number; data?: unknown };
+  };
+
+  console.error(`[ServiceOrderNew] ${context}`, {
+    ...details,
+    message: apiError?.message,
+    code: apiError?.code,
+    method: apiError?.config?.method,
+    url: apiError?.config?.url,
+    status: apiError?.response?.status,
+    response: apiError?.response?.data,
+  });
+};
 
 function ServiceOrderPage() {
   const { uuid } = useParams();
@@ -67,8 +99,11 @@ function ServiceOrderPage() {
   const [vehicleDraftBeforeCreate, setVehicleDraftBeforeCreate] = useState<ServiceOrder['vehicle'] | null>(null);
   const [previousCustomerSelection, setPreviousCustomerSelection] = useState<ServiceOrder['customer'] | null>(null);
   const [previousVehicleSelection, setPreviousVehicleSelection] = useState<ServiceOrder['vehicle'] | null>(null);
+  const [pendingImageFiles, setPendingImageFiles] = useState<File[]>([]);
+  const [fileSelectResetSignal, setFileSelectResetSignal] = useState(0);
   const [customerSearchTerm, debounceCustomerSearch] = useDebounce({ timeout: DEBOUNCE_TIMEOUT });
   const [vehicleSearchTerm, debounceVehicleSearch] = useDebounce({ timeout: DEBOUNCE_TIMEOUT });
+  const pendingImageFilesRef = useRef<File[]>([]);
 
   const methods = useForm<ServiceOrder>({ defaultValues: DEFAULT_FORM_VALUES as ServiceOrder });
   const queryClient = useQueryClient();
@@ -93,6 +128,9 @@ function ServiceOrderPage() {
     queryFn: () => ServiceOrderAPI.getImages(currentOrderId),
     enabled: Boolean(currentOrderId),
     refetchOnMount: true,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    retry: false,
     staleTime: 0,
   });
 
@@ -124,10 +162,16 @@ function ServiceOrderPage() {
   );
 
   useEffect(() => {
+    pendingImageFilesRef.current = pendingImageFiles;
+  }, [pendingImageFiles]);
+
+  useEffect(() => {
     if (!uuid && location.pathname === '/service-order/new') {
       methods.reset(DEFAULT_FORM_VALUES as ServiceOrder);
       setCustomerSearchInput('');
       setVehicleSearchInput('');
+      setPendingImageFiles([]);
+      setFileSelectResetSignal((value) => value + 1);
     }
   }, [location.pathname, methods, uuid]);
 
@@ -188,7 +232,7 @@ function ServiceOrderPage() {
 
   const handleOnError = (error: unknown) => {
     console.error(error);
-    toast.message('Erro ao salvar', { icon: <X /> });
+    toast.message(getApiErrorMessage(error, 'Erro ao salvar'), { icon: <X /> });
   };
 
   const invalidateSearchQueries = () => {
@@ -197,16 +241,88 @@ function ServiceOrderPage() {
     queryClient.invalidateQueries({ queryKey: ['get_all_vehicles'] });
   };
 
+  const appendPendingImageFiles = (newFiles: File[]) => {
+    setPendingImageFiles((previousFiles) => {
+      const deduplicatedMap = new Map(previousFiles.map((file) => [getImageFileKey(file), file]));
+      newFiles.forEach((file) => deduplicatedMap.set(getImageFileKey(file), file));
+      return Array.from(deduplicatedMap.values()).slice(0, IMAGE_UPLOAD_LIMIT);
+    });
+  };
+
+  const uploadImageBatch = async ({
+    orderId,
+    files,
+    source,
+  }: {
+    orderId: string;
+    files: File[];
+    source: 'manual' | 'after-save';
+  }) => {
+    const failedFiles: File[] = [];
+
+    for (const file of files) {
+      try {
+        await ServiceOrderAPI.uploadVehicleImage({
+          file,
+          order_id: orderId,
+          service_id: orderId,
+          file_type: 'new',
+          description: file.name,
+        });
+      } catch (error) {
+        failedFiles.push(file);
+        logDetailedError('Falha no upload de imagem', error, {
+          source,
+          orderId,
+          fileName: file.name,
+          fileSize: file.size,
+          fileType: file.type,
+        });
+      }
+    }
+
+    await queryClient.invalidateQueries({ queryKey: ['service-images', orderId] });
+    return failedFiles;
+  };
+
   const { mutate: putServiceOrder, isPending } = useMutation({
     mutationKey: ['put-service-order'],
     mutationFn: async (data: ServiceOrder) => (await ServiceOrderAPI.put(data)).data,
-    onError: (error) => handleOnError(error),
-    onSuccess: (response) => {
+    onError: (error) => {
+      logDetailedError('Falha ao salvar orcamento', error, {
+        orderId: methods.getValues('id') || methods.getValues('uuid'),
+      });
+      handleOnError(error);
+    },
+    onSuccess: async (response) => {
       applyServiceOrderToForm(response);
       setPdfData(response);
       toast.message('Salvo com sucesso!', { icon: <Check /> });
       invalidateSearchQueries();
-      queryClient.invalidateQueries({ queryKey: ['service-images', String(response.id || response.uuid || '')] });
+      const savedOrderId = getServiceOrderId(response);
+      await queryClient.invalidateQueries({ queryKey: ['service-images', savedOrderId] });
+
+      const queuedFiles = pendingImageFilesRef.current;
+      if (!savedOrderId || queuedFiles.length === 0) return;
+
+      const failedFiles = await uploadImageBatch({
+        orderId: savedOrderId,
+        files: queuedFiles,
+        source: 'after-save',
+      });
+
+      if (!failedFiles.length) {
+        setPendingImageFiles([]);
+        setFileSelectResetSignal((value) => value + 1);
+        toast.message(`${queuedFiles.length} imagem(ns) enviada(s) junto com o orcamento.`, { icon: <Check /> });
+        return;
+      }
+
+      setPendingImageFiles(failedFiles);
+      toast.message(
+        `Orcamento salvo, mas ${failedFiles.length} de ${queuedFiles.length} imagem(ns) nao foram enviadas.`,
+        { icon: <X /> },
+      );
     },
   });
 
@@ -218,26 +334,39 @@ function ServiceOrderPage() {
     });
   };
 
-  const handleOnUploadImage = async (files: File[]) => {
-    const file = files?.[0];
-    if (!file) return;
+  async function handleOnUploadImage(files: File[] | null | undefined) {
+    if (!files?.length) return;
 
     if (!currentOrderId) {
-      toast.message('Salve o orcamento antes de enviar imagens.', { icon: <X /> });
+      appendPendingImageFiles(files);
+      toast.message('Imagens adicionadas. Elas serao enviadas quando o orcamento for salvo.', { icon: <Check /> });
       return;
     }
 
-    try {
-      await ServiceOrderAPI.uploadVehicleImage({
-        imageFile: file,
-        orderId: currentOrderId,
-        description: '',
-      });
-      queryClient.invalidateQueries({ queryKey: ['service-images', currentOrderId] });
-    } catch (error) {
-      console.error(error);
-      toast.message('Erro ao enviar imagem', { icon: <X /> });
+    const failedFiles = await uploadImageBatch({
+      orderId: currentOrderId,
+      files,
+      source: 'manual',
+    });
+
+    if (!failedFiles.length) {
+      setFileSelectResetSignal((value) => value + 1);
+      toast.message(`${files.length} imagem(ns) enviada(s) com sucesso.`, { icon: <Check /> });
+      return;
     }
+
+    toast.message(`Falha ao enviar ${failedFiles.length} de ${files.length} imagem(ns).`, { icon: <X /> });
+  }
+
+  const handleOnClearSelectedImages = () => {
+    setPendingImageFiles([]);
+  };
+
+  const handleOnRemoveLocalFile = (fileToRemove: File) => {
+    const fileKeyToRemove = getImageFileKey(fileToRemove);
+    setPendingImageFiles((previousFiles) =>
+      previousFiles.filter((file) => getImageFileKey(file) !== fileKeyToRemove),
+    );
   };
 
   const handleSelectCustomer = (customer: Costumer) => {
@@ -453,7 +582,21 @@ function ServiceOrderPage() {
                 <Skeleton className="h-12 w-full" />
               </div>
             ) : (
-              <FileSelect label="Imagens" files={serviceImages?.data} onChange={handleOnUploadImage} />
+              <>
+                {!currentOrderId && pendingImageFiles.length > 0 && (
+                  <p className="mb-2 text-sm text-muted-foreground">
+                    {pendingImageFiles.length} imagem(ns) pendente(s). Elas serao enviadas ao salvar o orcamento.
+                  </p>
+                )}
+                <FileSelect
+                  label="Imagens"
+                  files={serviceImages?.data}
+                  onChange={handleOnUploadImage}
+                  onClear={handleOnClearSelectedImages}
+                  onRemoveLocalFile={handleOnRemoveLocalFile}
+                  resetSignal={fileSelectResetSignal}
+                />
+              </>
             )}
           </Card>
         </div>

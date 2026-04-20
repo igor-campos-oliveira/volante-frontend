@@ -2,13 +2,14 @@ import axios from 'axios';
 import { supabase, supabaseKey, supabaseSchema } from '@/utils/supabase';
 import { InternalAxiosRequestConfig } from 'axios';
 
-const TIMEOUT = 1000;
+const API_TIMEOUT = 10_000;
+const ESTIMATE_TIMEOUT = 60_000;
 
 export const api = axios.create({
   baseURL: import.meta.env.DEV
     ? 'https://volante-backend.fly.dev/'
     : 'https://volante-backend.fly.dev/',
-  timeout: TIMEOUT,
+  timeout: API_TIMEOUT,
 });
 
 export { supabase, supabaseSchema };
@@ -17,7 +18,7 @@ export const estimateService = axios.create({
   baseURL: import.meta.env.DEV
     ? 'https://estimate-svc.fly.dev/v1/estimate/'
     : 'https://estimate-svc.fly.dev/v1/estimate/',
-  timeout: TIMEOUT,
+  timeout: ESTIMATE_TIMEOUT,
 });
 
 const appendAuthHeaders = async (config: InternalAxiosRequestConfig) => {
@@ -36,4 +37,5 @@ const appendAuthHeaders = async (config: InternalAxiosRequestConfig) => {
 };
 
 api.interceptors.request.use(appendAuthHeaders);
-estimateService.interceptors.request.use(appendAuthHeaders);
+// Nao adicionamos Authorization/apikey automaticamente no estimateService para evitar
+// preflight CORS desnecessario em chamadas de upload/listagem de fotos.
