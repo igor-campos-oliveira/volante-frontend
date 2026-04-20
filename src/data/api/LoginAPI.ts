@@ -12,6 +12,12 @@ export interface IAuthResult {
   requiresEmailConfirmation?: boolean;
 }
 
+export type SignupMetadata = Record<string, unknown>;
+
+const signupInFlightByEmail = new Map<string, Promise<IAuthResult>>();
+
+const normalizeEmailKey = (email: string) => email.trim().toLowerCase();
+
 const mapSessionToCredential = (session: Session | null): ICredential | null => {
   if (!session?.access_token || !session?.refresh_token) {
     return null;
@@ -37,20 +43,51 @@ export const AuthAPI = {
 
     return { data: mapSessionToCredential(data.session) };
   },
-  signup: async (email: string, password: string): Promise<IAuthResult> => {
-    const { data, error } = await supabase.auth.signUp({
+  signup: async (
+    email: string,
+    password: string,
+    metadata?: SignupMetadata,
+  ): Promise<IAuthResult> => {
+    const emailKey = normalizeEmailKey(email);
+    const existingSignupPromise = signupInFlightByEmail.get(emailKey);
+    if (existingSignupPromise) {
+      return existingSignupPromise;
+    }
+
+    const signupPromise = (async () => {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        ...(metadata ? { options: { data: metadata } } : {}),
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return {
+        data: mapSessionToCredential(data.session),
+        requiresEmailConfirmation: !data.session,
+      };
+    })();
+
+    signupInFlightByEmail.set(emailKey, signupPromise);
+
+    try {
+      return await signupPromise;
+    } finally {
+      signupInFlightByEmail.delete(emailKey);
+    }
+  },
+  resendSignupConfirmation: async (email: string): Promise<void> => {
+    const { error } = await supabase.auth.resend({
+      type: 'signup',
       email,
-      password,
     });
 
     if (error) {
       throw error;
     }
-
-    return {
-      data: mapSessionToCredential(data.session),
-      requiresEmailConfirmation: !data.session,
-    };
   },
   refresh: async (): Promise<IAuthResult> => {
     const { data, error } = await supabase.auth.refreshSession();

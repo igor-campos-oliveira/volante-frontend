@@ -1,4 +1,4 @@
-import { AuthAPI, IAuthResult, ICredential } from '@/data/api/LoginAPI';
+import { AuthAPI, IAuthResult, ICredential, SignupMetadata } from '@/data/api/LoginAPI';
 import { supabase } from '@/utils/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -7,7 +7,8 @@ interface IAuthContext {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<IAuthResult>;
-  signup: (email: string, password: string) => Promise<IAuthResult>;
+  signup: (email: string, password: string, metadata?: SignupMetadata) => Promise<IAuthResult>;
+  resendSignupConfirmation: (email: string) => Promise<void>;
   logout: () => Promise<void>;
   credentials: ICredential | null;
   userEmail: string | null;
@@ -18,6 +19,7 @@ export const AuthContext = createContext<IAuthContext>({
   isLoading: false,
   login: async () => ({ data: null }),
   signup: async () => ({ data: null }),
+  resendSignupConfirmation: async () => {},
   logout: async () => {},
   credentials: null,
   userEmail: null,
@@ -101,10 +103,10 @@ const AuthProvider = ({ children }: any) => {
     }
   };
 
-  const signup = async (email: string, password: string) => {
+  const signup = async (email: string, password: string, metadata?: SignupMetadata) => {
     try {
       setLoading(true);
-      const response = await AuthAPI.signup(email, password);
+      const response = await AuthAPI.signup(email, password, metadata);
 
       if (response.data?.access_token) {
         queryClient.resetQueries();
@@ -132,8 +134,28 @@ const AuthProvider = ({ children }: any) => {
     }
   };
 
+  const resendSignupConfirmation = async (email: string) => {
+    try {
+      setLoading(true);
+      await AuthAPI.resendSignupConfirmation(email);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
-    <AuthContext.Provider value={{ isAuthenticated, isLoading, login, signup, logout, credentials, userEmail }}>
+    <AuthContext.Provider
+      value={{
+        isAuthenticated,
+        isLoading,
+        login,
+        signup,
+        resendSignupConfirmation,
+        logout,
+        credentials,
+        userEmail,
+      }}
+    >
       {children}
     </AuthContext.Provider>
   );

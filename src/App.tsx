@@ -17,7 +17,6 @@ import AuthProvider, { useAuthContext } from "./hooks/useAuth";
 import LoginPage from "./pages/Login";
 import EmployeesPage from "./pages/Employees/EmployeesPage";
 import { Users } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
 import CatalogServicesPage from "./pages/CatalogServices/CatalogServicesPage";
 
 const MENU_LINKS = [
@@ -44,41 +43,8 @@ const INTERNAL_ROUTES = [
 
 const ProtectedLayout = () => {
   const { isAuthenticated, isLoading } = useAuthContext();
-  const [isAuthTransitionLoading, setIsAuthTransitionLoading] = useState(false);
-  const hasResolvedInitialAuthRef = useRef(false);
-  const previousAuthenticatedRef = useRef(isAuthenticated);
-  const transitionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    if (isLoading) return;
-
-    if (!hasResolvedInitialAuthRef.current) {
-      hasResolvedInitialAuthRef.current = true;
-      previousAuthenticatedRef.current = isAuthenticated;
-      return;
-    }
-
-    const justLoggedIn = !previousAuthenticatedRef.current && isAuthenticated;
-    const justLoggedOut = previousAuthenticatedRef.current && !isAuthenticated;
-
-    if (justLoggedIn || justLoggedOut) {
-      setIsAuthTransitionLoading(true);
-      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
-      transitionTimerRef.current = setTimeout(() => {
-        setIsAuthTransitionLoading(false);
-      }, 4000);
-    }
-
-    previousAuthenticatedRef.current = isAuthenticated;
-  }, [isAuthenticated, isLoading]);
-
-  useEffect(() => {
-    return () => {
-      if (transitionTimerRef.current) clearTimeout(transitionTimerRef.current);
-    };
-  }, []);
-
-  if (isAuthTransitionLoading || (isLoading && previousAuthenticatedRef.current)) {
+  if (isLoading) {
     return (
       <div className="post-login-overlay">
         <div className="three-body" aria-label="Carregando">
@@ -88,10 +54,6 @@ const ProtectedLayout = () => {
         </div>
       </div>
     );
-  }
-
-  if (isLoading) {
-    return <div className="flex flex-1 items-center justify-center text-sm text-zinc-500">Carregando...</div>;
   }
 
   if (!isAuthenticated) {
@@ -111,7 +73,10 @@ const ProtectedLayout = () => {
 const router = createBrowserRouter([
   {
     path: ROUTER_PATHS.LOGIN,
-    element: <LoginPage/>
+    element:
+      <AuthProvider>
+        <LoginPage/>
+      </AuthProvider>
   },
   {
     path: "/",
