@@ -64,7 +64,7 @@ const Menu = ({links}: MenuProps) => {
               <button
                 type="button"
                 onClick={() => setIsCollapsed((prev) => !prev)}
-                className="hidden md:absolute md:-right-5 md:top-1/2 md:z-20 md:inline-flex md:-translate-y-1/2 rounded-full border border-zinc-200 bg-zinc-50 p-2 text-zinc-500 shadow-sm transition hover:bg-zinc-200 hover:text-zinc-800"
+                className="hidden md:absolute md:-right-5 md:top-1/2 md:z-20 md:inline-flex md:-translate-y-1/2 rounded-md border border-zinc-200 bg-zinc-50 p-2 text-zinc-500 shadow-sm transition hover:bg-zinc-200 hover:text-zinc-800"
                 aria-label={isCollapsed ? "Abrir menu" : "Fechar menu"}
                 title={isCollapsed ? "Abrir menu" : "Fechar menu"}
               >
