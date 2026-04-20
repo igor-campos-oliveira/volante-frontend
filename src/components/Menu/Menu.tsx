@@ -43,29 +43,33 @@ const Menu = ({links}: MenuProps) => {
 
     return (
         <nav className={cn(
-          "select-none flex items-center gap-4 justify-center px-4 pt-4 md:gap-3 md:flex-col md:py-6 md:px-3 md:items-stretch md:overflow-hidden md:transition-[width] md:duration-500 md:[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
+          "relative select-none flex items-center gap-4 justify-center px-4 pt-4 md:gap-3 md:flex-col md:py-6 md:px-3 md:items-stretch md:overflow-visible md:transition-[width] md:duration-500 md:[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
           isCollapsed ? "md:w-[92px]" : "md:w-[208px]"
         )}>
-            <div className="hidden md:flex justify-end">
+            <div
+              className={cn(
+                "relative flex w-full items-center justify-center md:overflow-visible"
+              )}
+            >
+              <div
+                className={cn(
+                  "flex items-center justify-center md:overflow-hidden md:whitespace-nowrap md:transition-[max-width,opacity,transform] md:duration-500 md:[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
+                  isCollapsed
+                    ? "md:max-w-0 md:opacity-0 md:-translate-x-2 md:delay-0"
+                    : "md:max-w-32 md:opacity-100 md:translate-x-0 md:delay-100"
+                )}
+              >
+                <Logo/>
+              </div>
               <button
                 type="button"
                 onClick={() => setIsCollapsed((prev) => !prev)}
-                className="rounded-md p-2 text-zinc-500 transition hover:bg-zinc-200 hover:text-zinc-800"
+                className="hidden md:absolute md:-right-5 md:top-1/2 md:z-20 md:inline-flex md:-translate-y-1/2 rounded-full border border-zinc-200 bg-zinc-50 p-2 text-zinc-500 shadow-sm transition hover:bg-zinc-200 hover:text-zinc-800"
                 aria-label={isCollapsed ? "Abrir menu" : "Fechar menu"}
                 title={isCollapsed ? "Abrir menu" : "Fechar menu"}
               >
                 {isCollapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
               </button>
-            </div>
-            <div
-              className={cn(
-                "flex items-center md:justify-center md:overflow-hidden md:transition-[max-height,opacity,transform] md:duration-500 md:[transition-timing-function:cubic-bezier(0.22,1,0.36,1)]",
-                isCollapsed
-                  ? "md:max-h-0 md:opacity-0 md:-translate-y-2 md:delay-0"
-                  : "md:max-h-16 md:opacity-100 md:translate-y-0 md:delay-100"
-              )}
-            >
-              <Logo/>
             </div>
             <ol className="flex-1 px-4 flex gap-1 items-center md:flex-col md:px-0">
                 {links.map(({path, label, icon}) => (
