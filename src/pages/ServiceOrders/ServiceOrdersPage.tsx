@@ -149,13 +149,14 @@ export default function SearchServiceOrdersPage() {
           </div>
         )}
 
-        {sortedServiceOrdersData.map((serviceOrder: ServiceOrder) => {
+        {sortedServiceOrdersData.map((serviceOrder: ServiceOrder, index: number) => {
           const { itemsCount, totalValue } = getOrderMetrics(serviceOrder);
+          const serviceOrderKey = serviceOrder?.uuid || serviceOrder?.id || `service-order-${index}`;
 
           return (
             <Card
-              className="capitalize border-zinc-200/80 bg-gradient-to-b from-white to-zinc-50/60 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-12px_rgba(139,92,246,0.55)]"
-              key={serviceOrder?.uuid}
+              className="self-start min-h-[192px] capitalize border-zinc-200/80 bg-gradient-to-b from-white to-zinc-50/60 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-[0_14px_30px_-12px_rgba(139,92,246,0.55)]"
+              key={serviceOrderKey}
               onClick={() => handleCardClick(serviceOrder)}
             >
               <Card.Header
@@ -182,7 +183,7 @@ export default function SearchServiceOrdersPage() {
               </Card.Header>
 
               <Card.Content>
-                <div className="space-y-3">
+                <div className="min-h-[96px] space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <CarPlate plate={serviceOrder?.vehicle?.plate || ""} />
                   </div>
