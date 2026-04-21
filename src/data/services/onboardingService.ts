@@ -249,18 +249,17 @@ const updateUserCompanyMetadata = async (company: EmpresaRow) => {
   }
 };
 
-const ensureUserMembership = async (user: User, companyId: string) => {
+const ensureUserMembership = async (user: User, companyId: string, accessLevel: 'member' | 'admin' = 'member') => {
   const userEmail = user.email?.trim() || null;
   const { error } = await fromSchema(USUARIOS_TABLE).upsert(
     {
       empresa_id: companyId,
       user_id: user.id,
-      nivel_acesso: 'member',
+      nivel_acesso: accessLevel,
       email: userEmail,
     },
     {
       onConflict: 'empresa_id,user_id',
-      ignoreDuplicates: true,
     },
   );
 
@@ -293,7 +292,7 @@ export const completePendingOnboarding = async (
   if (readCompanyIdFromUser(sessionUser)) {
     const existingCompanyId = readCompanyIdFromUser(sessionUser);
     if (existingCompanyId) {
-      await ensureUserMembership(sessionUser, existingCompanyId);
+      await ensureUserMembership(sessionUser, existingCompanyId, 'admin');
     }
     removePendingByEmail(selectedEmail);
     return { status: 'already_completed' };
@@ -321,7 +320,7 @@ export const completePendingOnboarding = async (
     pendingPayload.companySlug,
   );
 
-  await ensureUserMembership(sessionUser, company.id);
+  await ensureUserMembership(sessionUser, company.id, 'admin');
   await updateUserCompanyMetadata(company);
   removePendingByEmail(pendingPayload.email);
 
@@ -354,7 +353,7 @@ export const completeCurrentUserOnboarding = async (
 
   const companyId = readCompanyIdFromUser(sessionUser);
   if (companyId) {
-    await ensureUserMembership(sessionUser, companyId);
+    await ensureUserMembership(sessionUser, companyId, 'admin');
     const existingCompany = await findCompanyById(companyId);
     if (existingCompany) {
       return {
@@ -371,7 +370,7 @@ export const completeCurrentUserOnboarding = async (
     generatedSlug,
   );
 
-  await ensureUserMembership(sessionUser, company.id);
+  await ensureUserMembership(sessionUser, company.id, 'admin');
   await updateUserCompanyMetadata(company);
 
   return {
