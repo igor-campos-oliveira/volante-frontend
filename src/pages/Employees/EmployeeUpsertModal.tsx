@@ -127,7 +127,7 @@ export default function EmployeeUpsertModal({
       toast.success(employee?.id ? "Funcionario atualizado." : "Funcionario criado.");
       onOpenChange(false);
     } catch (error) {
-      const message = getErrorMessage(error) || "Nao foi possivel salvar o funcionario.";
+      const message = getErrorMessage(error) || "Não foi possível salvar o funcionário.";
       toast.error(message);
     }
   };
@@ -140,7 +140,7 @@ export default function EmployeeUpsertModal({
             {employee?.id ? "Editar funcionario" : "Adicionar funcionario"}
           </DialogTitle>
           <DialogDescription>
-            Salve os dados do funcionario direto no Supabase.
+            Salve os dados do funcionário.
           </DialogDescription>
         </DialogHeader>
 

@@ -50,7 +50,7 @@ const digitsOnly = (value?: string | null) => String(value ?? "").replace(/\D/g,
 const formatCPF = (value?: string | null) => {
   const digits = digitsOnly(value);
   if (digits.length !== 11) {
-    return value || "CPF nao informado";
+    return value || "CPF não informado";
   }
   return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
 };
@@ -94,7 +94,7 @@ export default function EmployeesPage() {
   const employeesData = employees?.pages.flatMap((page) => page.data) || [];
   const sortedEmployeesData = sortByCreatedAtDesc(employeesData);
   const lastUpdatedAt =
-    "Ultima atualizacao: " + timestampToLocaleString(dataUpdatedAt);
+    "Ultima atualização: " + timestampToLocaleString(dataUpdatedAt);
 
   const { mutateAsync: handleDeleteEmployee, isPending: isDeleting } = useMutation({
     mutationFn: async (employeeId: string) => deleteEmployee(employeeId),
@@ -123,7 +123,7 @@ export default function EmployeesPage() {
 
   const confirmDelete = async () => {
     if (!employeeToDelete?.id) {
-      toast.error("Funcionario invalido para exclusao.");
+      toast.error("Funcionario invalido para exclusão.");
       return;
     }
 
@@ -136,7 +136,7 @@ export default function EmployeesPage() {
       const message =
         error instanceof Error
           ? error.message
-          : "Nao foi possivel remover o funcionario.";
+          : "Não foi possível remover o funcionário.";
       toast.error(message);
     }
   };
@@ -181,7 +181,7 @@ export default function EmployeesPage() {
           >
             <Card.Header
               title={employee.nome || "Sem nome"}
-              description={employee.cargo || "Cargo nao informado"}
+              description={employee.cargo || "Cargo não informado"}
             >
               <Card.HeaderActions>
                 <DropdownMenu>
@@ -255,13 +255,13 @@ export default function EmployeesPage() {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirmar exclusao</DialogTitle>
+            <DialogTitle>Confirmar exclusão</DialogTitle>
             <DialogDescription>
-              Voce realmente deseja excluir o funcionario{" "}
+              Você realmente deseja excluir o funcionário{" "}
               <span className="font-medium text-foreground">
                 {employeeToDelete?.nome || "selecionado"}
               </span>
-              ? Esta acao nao pode ser desfeita e removera o registro
+              ? Esta ação não pode ser desfeita e removerá o registro
               definitivamente do banco de dados.
             </DialogDescription>
           </DialogHeader>

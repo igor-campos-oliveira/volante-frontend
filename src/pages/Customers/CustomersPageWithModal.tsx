@@ -88,7 +88,7 @@ export default function CustomersPage() {
   const customersData = customers?.pages.flatMap((page) => page.data) || [];
   const sortedCustomersData = sortByCreatedAtDesc(customersData);
   const lastUpdatedAt =
-    "Ultima atualizacao: " + timestampToLocaleString(dataUpdatedAt);
+    "Ultima atualizacão: " + timestampToLocaleString(dataUpdatedAt);
   const getStatusOption = (status?: string | null) =>
     SO_STATUS_LIST.find((item) => item.value === status);
 
@@ -147,7 +147,7 @@ export default function CustomersPage() {
 
   const confirmDelete = async () => {
     if (!customerToDelete?.id) {
-      toast.error("Cliente invalido para exclusao.");
+      toast.error("Cliente invalido para exclusão.");
       return;
     }
 
@@ -160,7 +160,7 @@ export default function CustomersPage() {
       const message =
         error instanceof Error
           ? error.message
-          : "Nao foi possivel remover o cliente.";
+          : "Não foi possivel remover o cliente.";
       toast.error(message);
     }
   };
@@ -206,18 +206,18 @@ export default function CustomersPage() {
             )}
             <Card.Header
               fallback={customer?.nome?.substring(0, 1) || "?"}
-              title={customer.nome || "Nome nao informado"}
+              title={customer.nome || "Nome não informado"}
               description={
                 customer.tipo_documento
                   ? `${customer.tipo_documento.toUpperCase()}: ${customer.numero_documento}`
-                  : "Documento nao informado"
+                  : "Documento não informado"
               }
             >
               <Card.HeaderActions>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Card.Action
-                      aria-label="Mais opcoes"
+                      aria-label="Mais opções"
                       icon={<MoreVertical size={18} />}
                     />
                   </DropdownMenuTrigger>
@@ -254,7 +254,7 @@ export default function CustomersPage() {
               </p>
               <p className="mt-1 flex gap-2 text-sm">
                 <Home size={18} />
-                {customer.endereco || "nao informado"}
+                {customer.endereco || "não informado"}
               </p>
             </Card.Content>
           </Card>
@@ -288,10 +288,10 @@ export default function CustomersPage() {
         <DialogContent className="max-w-2xl">
           <DialogHeader>
             <DialogTitle>
-              OrÃ§amentos de {customerToViewBudgets?.nome || "cliente"}
+              Orçamentos de {customerToViewBudgets?.nome || "cliente"}
             </DialogTitle>
             <DialogDescription>
-              Lista de orcamentos relacionados ao cliente selecionado.
+              Lista de orçamentos do cliente.
             </DialogDescription>
           </DialogHeader>
           <div className="max-h-[55vh] overflow-y-auto space-y-2 pr-1">
@@ -305,7 +305,7 @@ export default function CustomersPage() {
 
             {!isLoadingBudgets && !isFetchingBudgets && customerBudgets.length === 0 && (
               <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
-                Nenhum orcamento encontrado para este cliente.
+                Nenhum orçamento encontrado para este cliente.
               </div>
             )}
 
@@ -323,7 +323,7 @@ export default function CustomersPage() {
                   >
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-sm font-medium">
-                        Orcamento #{serviceOrder.uuid || serviceOrder.id}
+                        Orçamento #{serviceOrder.uuid || serviceOrder.id}
                       </p>
                       <span
                         className={`rounded-full px-2 py-1 text-xs font-medium ${statusOption
@@ -340,11 +340,11 @@ export default function CustomersPage() {
                         <Car size={14} />
                         {serviceOrder?.vehicle?.brand || serviceOrder?.vehicle?.model
                           ? `${serviceOrder?.vehicle?.brand || ""} ${serviceOrder?.vehicle?.model || ""}`.trim()
-                          : "Veiculo nao informado"}
+                          : "Veiculo não informado"}
                       </p>
                       <p className="flex items-center gap-1">
                         <ClipboardList size={14} />
-                        Placa: {serviceOrder?.vehicle?.plate || "nao informada"}
+                        Placa: {serviceOrder?.vehicle?.plate || "não informada"}
                       </p>
                     </div>
                   </button>
@@ -373,14 +373,14 @@ export default function CustomersPage() {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirmar exclusao</DialogTitle>
+            <DialogTitle>Confirmar exclusão</DialogTitle>
             <DialogDescription>
-              Voce realmente deseja excluir o cliente{" "}
+              Você realmente deseja excluir o cliente{" "}
               <span className="font-medium text-foreground">
                 {customerToDelete?.nome || "selecionado"}
               </span>
-              ? Esta acao nao pode ser desfeita e removera o registro
-              definitivamente do banco de dados.
+              ? Esta ação não pode ser desfeita e removera o registro
+              definitivamente.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

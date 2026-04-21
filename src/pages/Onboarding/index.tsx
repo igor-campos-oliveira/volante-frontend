@@ -15,7 +15,7 @@ const getOnboardingErrorMessage = (error: unknown) => {
     return error.message
   }
 
-  return 'Nao foi possivel concluir o onboarding. Tente novamente.'
+  return 'Não foi possível concluir o onboarding. Tente novamente.'
 }
 
 export default function OnboardingPage() {

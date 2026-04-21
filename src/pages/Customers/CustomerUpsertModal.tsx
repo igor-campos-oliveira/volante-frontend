@@ -99,7 +99,7 @@ export default function CustomerUpsertModal({
             {customer?.id ? "Editar cliente" : "Adicionar cliente"}
           </DialogTitle>
           <DialogDescription>
-            Salve os dados do cliente direto no Supabase.
+            Salve os dados do cliente.
           </DialogDescription>
         </DialogHeader>
 
