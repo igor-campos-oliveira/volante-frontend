@@ -16,7 +16,7 @@ import {
 } from "@/data/api/StockAPI";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 
 type StockFormValues = {
@@ -39,7 +39,7 @@ const DEFAULT_VALUES: StockFormValues = {
   descricao: "",
   categoria: "",
   marca: "",
-  unidade_medida: "un",
+  unidade_medida: "",
   preco_custo: "",
   preco_venda: "",
   quantidade_estoque: "0",
@@ -47,20 +47,33 @@ const DEFAULT_VALUES: StockFormValues = {
   ativo: true,
 };
 
+const moneyFormatter = new Intl.NumberFormat("pt-BR", {
+  style: "currency",
+  currency: "BRL",
+});
+
 interface StockUpsertModalProps {
   open: boolean;
   item?: StockItem | null;
   onOpenChange: (open: boolean) => void;
 }
 
-const toOptionalNumber = (value: string) => {
-  const normalized = value.replace(",", ".").trim();
-  if (!normalized) {
+const formatCurrencyInput = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) {
+    return "";
+  }
+
+  return moneyFormatter.format(Number(digits) / 100);
+};
+
+const parseCurrencyInput = (value: string) => {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) {
     return null;
   }
 
-  const parsed = Number(normalized);
-  return Number.isFinite(parsed) ? parsed : null;
+  return Number(digits) / 100;
 };
 
 const toInteger = (value: string) => {
@@ -87,9 +100,9 @@ export default function StockUpsertModal({
         descricao: item?.description ?? "",
         categoria: item?.category ?? "",
         marca: item?.brand ?? "",
-        unidade_medida: item?.unitMeasure ?? "un",
-        preco_custo: item?.costPrice != null ? String(item.costPrice) : "",
-        preco_venda: item?.salePrice != null ? String(item.salePrice) : "",
+        unidade_medida: item?.unitMeasure ?? "",
+        preco_custo: item?.costPrice != null ? moneyFormatter.format(item.costPrice) : "",
+        preco_venda: item?.salePrice != null ? moneyFormatter.format(item.salePrice) : "",
         quantidade_estoque: String(item?.stockQuantity ?? 0),
         estoque_minimo: String(item?.minimumStock ?? 0),
         ativo: item?.isActive ?? true,
@@ -115,8 +128,8 @@ export default function StockUpsertModal({
         categoria: values.categoria.trim() || null,
         marca: values.marca.trim() || null,
         unidade_medida: values.unidade_medida.trim() || "un",
-        preco_custo: toOptionalNumber(values.preco_custo),
-        preco_venda: toOptionalNumber(values.preco_venda),
+        preco_custo: parseCurrencyInput(values.preco_custo),
+        preco_venda: parseCurrencyInput(values.preco_venda),
         quantidade_estoque: toInteger(values.quantidade_estoque),
         estoque_minimo: toInteger(values.estoque_minimo),
         ativo: values.ativo,
@@ -165,25 +178,41 @@ export default function StockUpsertModal({
           <div className="grid gap-4 md:grid-cols-3">
             <Input label="Categoria" placeholder="Ex: Lataria" {...form.register("categoria")} />
             <Input label="Marca" placeholder="Ex: Fiat" {...form.register("marca")} />
-            <Input label="Unidade" placeholder="un" {...form.register("unidade_medida")} />
+            <Input
+              label="Medida"
+              placeholder="Ex: Unidade de medida"
+              {...form.register("unidade_medida")}
+            />
           </div>
 
           <div className="grid gap-4 md:grid-cols-2">
-            <Input
-              label="Preço de custo"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              {...form.register("preco_custo")}
+            <Controller
+              name="preco_custo"
+              control={form.control}
+              render={({ field }) => (
+                <Input
+                  label="Preço de custo"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="R$ 0,00"
+                  value={field.value}
+                  onChange={(event) => field.onChange(formatCurrencyInput(event.target.value))}
+                />
+              )}
             />
-            <Input
-              label="Preço de venda"
-              type="number"
-              step="0.01"
-              min="0"
-              placeholder="0.00"
-              {...form.register("preco_venda")}
+            <Controller
+              name="preco_venda"
+              control={form.control}
+              render={({ field }) => (
+                <Input
+                  label="Preço de venda"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="R$ 0,00"
+                  value={field.value}
+                  onChange={(event) => field.onChange(formatCurrencyInput(event.target.value))}
+                />
+              )}
             />
           </div>
 
@@ -245,3 +274,4 @@ export default function StockUpsertModal({
     </Dialog>
   );
 }
+
