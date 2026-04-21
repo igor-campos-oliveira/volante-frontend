@@ -94,7 +94,7 @@ export default function CatalogServicesPage() {
   const servicesData = services?.pages.flatMap((page) => page.data) || [];
   const sortedServicesData = sortByCreatedAtDesc(servicesData);
   const lastUpdatedAt =
-    "Ultima atualizacao: " + timestampToLocaleString(dataUpdatedAt);
+    "Ultima atualização: " + timestampToLocaleString(dataUpdatedAt);
 
   const { mutateAsync: handleToggleStatus, isPending: isTogglingStatus } = useMutation({
     mutationFn: async ({
@@ -114,7 +114,7 @@ export default function CatalogServicesPage() {
 
   const onToggleServiceStatus = async (service: CatalogService, nextValue: boolean) => {
     if (!service.activeField) {
-      toast.info("Esse registro nao possui campo de ativo/inativo.");
+      toast.info("Esse registro não possui campo de ativo/inativo.");
       return;
     }
 
@@ -128,25 +128,25 @@ export default function CatalogServicesPage() {
       toast.success("Status atualizado.");
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Nao foi possivel atualizar o status.";
+        error instanceof Error ? error.message : "Não foi possível atualizar o status.";
       toast.error(message);
     }
   };
 
   const onConfirmDelete = async () => {
     if (!serviceToDelete?.id) {
-      toast.error("Servico invalido para exclusao.");
+      toast.error("Serviço inválido para exclusão.");
       return;
     }
 
     try {
       await handleDeleteService(serviceToDelete.id);
       await queryClient.invalidateQueries({ queryKey: ["get_car_services"] });
-      toast.success("Servico removido.");
+      toast.success("Serviço removido.");
       setServiceToDelete(null);
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Nao foi possivel remover o servico.";
+        error instanceof Error ? error.message : "Não foi possível remover o serviço.";
       toast.error(message);
     }
   };
@@ -163,11 +163,11 @@ export default function CatalogServicesPage() {
 
   return (
     <SearchPage>
-      <SearchPage.Title>Servicos</SearchPage.Title>
+      <SearchPage.Title>Serviços</SearchPage.Title>
       <p className="text-sm text-muted-foreground">{lastUpdatedAt}</p>
 
       <SearchPage.SearchBar
-        placeholder="Pesquise os servicos aqui..."
+        placeholder="Pesquise os serviços aqui..."
         onChange={(e) => {
           setSearchValue(e.target.value);
         }}
@@ -205,7 +205,7 @@ export default function CatalogServicesPage() {
 
         {!isLoading && sortedServicesData.length === 0 && (
           <div className="col-span-full rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-            Nenhum servico encontrado.
+            Nenhum serviço encontrado.
           </div>
         )}
 
@@ -261,7 +261,7 @@ export default function CatalogServicesPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 rounded-full"
-                        aria-label="Mais opcoes"
+                        aria-label="Mais opções"
                       >
                         <MoreVertical size={18} />
                       </Button>
@@ -342,13 +342,13 @@ export default function CatalogServicesPage() {
       >
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Confirmar exclusao</DialogTitle>
+            <DialogTitle>Confirmar exclusão</DialogTitle>
             <DialogDescription>
-              Voce realmente deseja excluir o servico{" "}
+              Você realmente deseja excluir o serviço{" "}
               <span className="font-medium text-foreground">
                 {serviceToDelete?.description || "selecionado"}
               </span>
-              ? Esta acao nao pode ser desfeita.
+              ? Esta ação não pode ser desfeita.
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>

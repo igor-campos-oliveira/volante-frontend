@@ -148,7 +148,7 @@ export default function VehicleUpsertModal({
       const message =
         error instanceof Error
           ? error.message
-          : "Nao foi possivel salvar o veiculo.";
+          : "Não foi possível salvar o veiculo.";
       toast.error(message);
     }
   };
@@ -161,7 +161,7 @@ export default function VehicleUpsertModal({
             {vehicle?.id ? "Editar veiculo" : "Adicionar veiculo"}
           </DialogTitle>
           <DialogDescription>
-            Salve os dados do veiculo direto no Supabase.
+            Salve os dados do veiculo.
           </DialogDescription>
         </DialogHeader>
 

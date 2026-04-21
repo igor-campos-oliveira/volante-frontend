@@ -84,7 +84,7 @@ export default function SearchServiceOrdersPage() {
       const message =
         error instanceof Error
           ? error.message
-          : "Nao foi possivel atualizar o status do orçamento.";
+          : "Não foi possível atualizar o status do orçamento.";
       toast.error(message);
     } finally {
       setUpdatingOrderId(null);

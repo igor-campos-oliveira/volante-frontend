@@ -83,7 +83,7 @@ export default function VehiclesPage() {
   const vehiclesData = vehicles?.pages.flatMap((page) => page.data) || [];
   const sortedVehiclesData = sortByCreatedAtDesc(vehiclesData);
   const lastUpdatedAt =
-    "Ultima atualizacao: " + timestampToLocaleString(dataUpdatedAt);
+    "Ultima atualização: " + timestampToLocaleString(dataUpdatedAt);
 
   const openCreateModal = () => {
     setEditingVehicle(null);
@@ -113,7 +113,7 @@ export default function VehiclesPage() {
 
   const confirmDelete = async () => {
     if (!vehicleToDelete?.id) {
-      toast.error("Veiculo invalido para exclusao.");
+      toast.error("Veiculo invalido para exclusão.");
       return;
     }
 
@@ -126,7 +126,7 @@ export default function VehiclesPage() {
       const message =
         error instanceof Error
           ? error.message
-          : "Nao foi possivel remover o veiculo.";
+          : "Não foi possível remover o veiculo.";
       toast.error(message);
     }
   };
@@ -172,7 +172,7 @@ export default function VehiclesPage() {
                 normalize(item.label) === normalizedColor
             )?.label ||
             vehicle.cor ||
-            "Cor nao informada";
+            "Cor não informada";
           const fuelLabel =
             CAR_FUELS.find(
               (item) =>
@@ -180,7 +180,7 @@ export default function VehiclesPage() {
                 normalize(item.label) === normalizedFuel
             )?.label ||
             vehicle.combustivel ||
-            "Combustivel nao informado.";
+            "Combustível não informado.";
 
           return (
             <Card
@@ -201,7 +201,7 @@ export default function VehiclesPage() {
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Card.Action
-                          aria-label="Mais opcoes"
+                          aria-label="Mais opções"
                           icon={<MoreVertical size={18} />}
                         />
                       </DropdownMenuTrigger>
