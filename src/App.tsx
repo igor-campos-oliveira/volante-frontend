@@ -4,7 +4,16 @@ import { Toaster } from "./components/ui/sonner";
 import { createBrowserRouter, Outlet, RouterProvider } from "react-router-dom";
 import Menu from "./components/Menu/Menu";
 import { ROUTER_PATHS } from "./routes/routes";
-import { Car, FilePlus, FolderSearch, Home, User, Wrench } from "lucide-react";
+import {
+  Boxes,
+  Car,
+  FilePlus,
+  FolderSearch,
+  Home,
+  User,
+  Users,
+  Wrench,
+} from "lucide-react";
 import VehiclesPage from "./pages/Vehicles/VehiclesPage";
 import CustomersPage from "./pages/Customers/CustomersPageWithModal";
 // import CatalogPage from "./pages/Catalog/CatalogPage";
@@ -16,30 +25,43 @@ import NotFoundPage from "./pages/NotFoundPage";
 import AuthProvider, { useAuthContext } from "./hooks/useAuth";
 import LoginPage from "./pages/Login";
 import EmployeesPage from "./pages/Employees/EmployeesPage";
-import { Users } from "lucide-react";
 import CatalogServicesPage from "./pages/CatalogServices/CatalogServicesPage";
 import OnboardingPage from "./pages/Onboarding";
+import StockPage from "./pages/Stock/StockPage";
 
 const MENU_LINKS = [
-  {path: ROUTER_PATHS.HOME, label: 'Início',icon: <Home size={23}/>},
-  {path: ROUTER_PATHS.SERVICE_ORDER + '/new',label: 'Novo',icon: <FilePlus size={23}/>},
-  {path: ROUTER_PATHS.SERVICE_ORDERS,label: 'Orçamentos',icon: <FolderSearch size={23}/>},
-  {path: ROUTER_PATHS.CUSTOMER,label: 'Clientes',icon: <User size={23}/>},
-  {path: ROUTER_PATHS.SERVICES, label: 'Servicos', icon: <Wrench size={23}/>},
-  {path: ROUTER_PATHS.VEHICLE, label: 'Veículos', icon: <Car size={23}/>},
-  {path: ROUTER_PATHS.EMPLOYEE, label: 'Funcionários', icon: <Users size={23}/>}
-
-]
+  { path: ROUTER_PATHS.HOME, label: "Início", icon: <Home size={23} /> },
+  {
+    path: ROUTER_PATHS.SERVICE_ORDER + "/new",
+    label: "Novo",
+    icon: <FilePlus size={23} />,
+  },
+  {
+    path: ROUTER_PATHS.SERVICE_ORDERS,
+    label: "Orçamentos",
+    icon: <FolderSearch size={23} />,
+  },
+  { path: ROUTER_PATHS.CUSTOMER, label: "Clientes", icon: <User size={23} /> },
+  { path: ROUTER_PATHS.SERVICES, label: "Servicos", icon: <Wrench size={23} /> },
+  { path: ROUTER_PATHS.STOCK, label: "Estoque", icon: <Boxes size={23} /> },
+  { path: ROUTER_PATHS.VEHICLE, label: "Veículos", icon: <Car size={23} /> },
+  {
+    path: ROUTER_PATHS.EMPLOYEE,
+    label: "Funcionários",
+    icon: <Users size={23} />,
+  },
+];
 
 const INTERNAL_ROUTES = [
-  { path: ROUTER_PATHS.HOME, element: <HomePage/> },
-  { path: ROUTER_PATHS.SERVICE_ORDER + '/new', element: <ServiceOrderPage/> },
-  { path: ROUTER_PATHS.SERVICE_ORDERS, element: <SearchServiceOrdersPage/> },
-  { path: ROUTER_PATHS.CUSTOMER, element: <CustomersPage/> },
-  { path: ROUTER_PATHS.SERVICES, element: <CatalogServicesPage/> },
-  { path: ROUTER_PATHS.VEHICLE, element: <VehiclesPage/> },
-  { path: `${ROUTER_PATHS.SERVICE_ORDER}/:uuid`, element: <ServiceOrderPage/> },
-  { path: ROUTER_PATHS.EMPLOYEE, element: <EmployeesPage/> },
+  { path: ROUTER_PATHS.HOME, element: <HomePage /> },
+  { path: ROUTER_PATHS.SERVICE_ORDER + "/new", element: <ServiceOrderPage /> },
+  { path: ROUTER_PATHS.SERVICE_ORDERS, element: <SearchServiceOrdersPage /> },
+  { path: ROUTER_PATHS.CUSTOMER, element: <CustomersPage /> },
+  { path: ROUTER_PATHS.SERVICES, element: <CatalogServicesPage /> },
+  { path: ROUTER_PATHS.STOCK, element: <StockPage /> },
+  { path: ROUTER_PATHS.VEHICLE, element: <VehiclesPage /> },
+  { path: `${ROUTER_PATHS.SERVICE_ORDER}/:uuid`, element: <ServiceOrderPage /> },
+  { path: ROUTER_PATHS.EMPLOYEE, element: <EmployeesPage /> },
 ];
 
 const ProtectedLayout = () => {
@@ -78,27 +100,29 @@ const ProtectedLayout = () => {
 const router = createBrowserRouter([
   {
     path: ROUTER_PATHS.LOGIN,
-    element:
+    element: (
       <AuthProvider>
-        <LoginPage/>
+        <LoginPage />
       </AuthProvider>
+    ),
   },
   {
     path: "/",
-    element:
+    element: (
       <AuthProvider>
-        <ProtectedLayout/>
-      </AuthProvider> ,
-    errorElement: <NotFoundPage/>,
-    children: INTERNAL_ROUTES
-  }
-])
+        <ProtectedLayout />
+      </AuthProvider>
+    ),
+    errorElement: <NotFoundPage />,
+    children: INTERNAL_ROUTES,
+  },
+]);
 
 function App() {
   return (
     <div className="bg-zinc-50 flex-1 flex">
-      <RouterProvider router={router}/>
-      <Toaster position="top-right"  closeButton/>
+      <RouterProvider router={router} />
+      <Toaster position="top-right" closeButton />
     </div>
   );
 }
