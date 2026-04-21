@@ -14,6 +14,9 @@ interface IAuthContext {
   credentials: ICredential | null;
   userEmail: string | null;
   userCompanyName: string | null;
+  userCompanyId: string | null;
+  requiresOnboarding: boolean;
+  refreshSessionState: () => Promise<void>;
 }
 
 export const AuthContext = createContext<IAuthContext>({
@@ -26,6 +29,9 @@ export const AuthContext = createContext<IAuthContext>({
   credentials: null,
   userEmail: null,
   userCompanyName: null,
+  userCompanyId: null,
+  requiresOnboarding: false,
+  refreshSessionState: async () => {},
 });
 
 const readCompanyNameFromUser = (user: User | null) => {
@@ -89,19 +95,26 @@ const readCompanyIdFromMembership = async (userId: string) => {
 
 const resolveCompanyNameFromUser = async (user: User | null) => {
   const companyNameFromMetadata = readCompanyNameFromUser(user);
-  if (companyNameFromMetadata) {
-    return companyNameFromMetadata;
-  }
-
   const companyIdFromMetadata = readCompanyIdFromUser(user);
   const companyIdFromMembership = user?.id ? await readCompanyIdFromMembership(user.id) : null;
+  const attachedCompanyId = companyIdFromMetadata ?? companyIdFromMembership ?? null;
   const fallbackCompanyIdFromUser = user?.id?.trim() || null;
-  const companyIds = [companyIdFromMetadata, companyIdFromMembership, fallbackCompanyIdFromUser].filter(
+  const companyIds = [attachedCompanyId, fallbackCompanyIdFromUser].filter(
     (value, index, array): value is string => Boolean(value) && array.indexOf(value) === index,
   );
 
+  if (companyNameFromMetadata) {
+    return {
+      companyId: attachedCompanyId,
+      companyName: companyNameFromMetadata,
+    };
+  }
+
   if (!companyIds.length) {
-    return null;
+    return {
+      companyId: attachedCompanyId,
+      companyName: null,
+    };
   }
 
   for (const companyId of companyIds) {
@@ -119,14 +132,20 @@ const resolveCompanyNameFromUser = async (user: User | null) => {
 
       const companyName = data?.nome;
       if (typeof companyName === 'string' && companyName.trim()) {
-        return companyName.trim();
+        return {
+          companyId: attachedCompanyId,
+          companyName: companyName.trim(),
+        };
       }
     } catch {
       continue;
     }
   }
 
-  return null;
+  return {
+    companyId: attachedCompanyId,
+    companyName: null,
+  };
 };
 
 const AuthProvider = ({ children }: any) => {
@@ -136,30 +155,41 @@ const AuthProvider = ({ children }: any) => {
   const [credentials, setCredentials] = useState<ICredential | null>(null);
   const [userEmail, setUserEmail] = useState<string | null>(null);
   const [userCompanyName, setUserCompanyName] = useState<string | null>(null);
+  const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
+
+  const syncSessionState = async () => {
+    const { data } = await supabase.auth.getSession();
+    const session = data.session;
+
+    if (session?.access_token && session.refresh_token) {
+      const resolvedCompany = await resolveCompanyNameFromUser(session.user ?? null);
+
+      setCredentials({
+        access_token: session.access_token,
+        refresh_token: session.refresh_token,
+        expiration: session.expires_at ?? Math.floor(Date.now() / 1000),
+      });
+      setUserEmail(session.user?.email ?? null);
+      setUserCompanyId(resolvedCompany.companyId);
+      setUserCompanyName(resolvedCompany.companyName);
+      setAuthenticated(true);
+      return;
+    }
+
+    setCredentials(null);
+    setUserEmail(null);
+    setUserCompanyId(null);
+    setUserCompanyName(null);
+    setAuthenticated(false);
+  };
 
   useEffect(() => {
     let isMounted = true;
 
     const bootSession = async () => {
-      const { data } = await supabase.auth.getSession();
       if (!isMounted) return;
 
-      if (data.session?.access_token && data.session.refresh_token) {
-        const resolvedCompanyName = await resolveCompanyNameFromUser(data.session.user ?? null);
-        setCredentials({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-          expiration: data.session.expires_at ?? Math.floor(Date.now() / 1000),
-        });
-        setUserEmail(data.session.user?.email ?? null);
-        setUserCompanyName(resolvedCompanyName);
-        setAuthenticated(true);
-      } else {
-        setCredentials(null);
-        setUserEmail(null);
-        setUserCompanyName(null);
-        setAuthenticated(false);
-      }
+      await syncSessionState();
       setLoading(false);
     };
 
@@ -168,18 +198,20 @@ const AuthProvider = ({ children }: any) => {
     const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
       void (async () => {
         if (session?.access_token && session.refresh_token) {
-          const resolvedCompanyName = await resolveCompanyNameFromUser(session.user ?? null);
+          const resolvedCompany = await resolveCompanyNameFromUser(session.user ?? null);
           setCredentials({
             access_token: session.access_token,
             refresh_token: session.refresh_token,
             expiration: session.expires_at ?? Math.floor(Date.now() / 1000),
           });
           setUserEmail(session.user?.email ?? null);
-          setUserCompanyName(resolvedCompanyName);
+          setUserCompanyId(resolvedCompany.companyId);
+          setUserCompanyName(resolvedCompany.companyName);
           setAuthenticated(true);
         } else {
           setCredentials(null);
           setUserEmail(null);
+          setUserCompanyId(null);
           setUserCompanyName(null);
           setAuthenticated(false);
         }
@@ -203,8 +235,9 @@ const AuthProvider = ({ children }: any) => {
         setCredentials(response.data);
         setUserEmail(email);
         const { data: sessionData } = await supabase.auth.getSession();
-        const resolvedCompanyName = await resolveCompanyNameFromUser(sessionData.session?.user ?? null);
-        setUserCompanyName(resolvedCompanyName);
+        const resolvedCompany = await resolveCompanyNameFromUser(sessionData.session?.user ?? null);
+        setUserCompanyId(resolvedCompany.companyId);
+        setUserCompanyName(resolvedCompany.companyName);
         setAuthenticated(true);
       }
 
@@ -213,6 +246,7 @@ const AuthProvider = ({ children }: any) => {
       setAuthenticated(false);
       setCredentials(null);
       setUserEmail(null);
+      setUserCompanyId(null);
       setUserCompanyName(null);
       throw error;
     } finally {
@@ -230,8 +264,9 @@ const AuthProvider = ({ children }: any) => {
         setCredentials(response.data);
         setUserEmail(email);
         const { data: sessionData } = await supabase.auth.getSession();
-        const resolvedCompanyName = await resolveCompanyNameFromUser(sessionData.session?.user ?? null);
-        setUserCompanyName(resolvedCompanyName);
+        const resolvedCompany = await resolveCompanyNameFromUser(sessionData.session?.user ?? null);
+        setUserCompanyId(resolvedCompany.companyId);
+        setUserCompanyName(resolvedCompany.companyName);
         setAuthenticated(true);
       }
 
@@ -248,6 +283,7 @@ const AuthProvider = ({ children }: any) => {
     } finally {
       setCredentials(null);
       setUserEmail(null);
+      setUserCompanyId(null);
       setUserCompanyName(null);
       setAuthenticated(false);
       setLoading(false);
@@ -264,6 +300,10 @@ const AuthProvider = ({ children }: any) => {
     }
   };
 
+  const refreshSessionState = async () => {
+    await syncSessionState();
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -276,6 +316,9 @@ const AuthProvider = ({ children }: any) => {
         credentials,
         userEmail,
         userCompanyName,
+        userCompanyId,
+        requiresOnboarding: isAuthenticated && !isLoading && !userCompanyId,
+        refreshSessionState,
       }}
     >
       {children}

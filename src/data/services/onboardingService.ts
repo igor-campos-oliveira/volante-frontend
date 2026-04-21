@@ -2,6 +2,7 @@ import { supabase, supabaseSchema } from '@/data/api/config';
 import { User } from '@supabase/supabase-js';
 
 const EMPRESAS_TABLE = 'empresas' as const;
+const USUARIOS_TABLE = 'usuarios' as const;
 const ONBOARDING_STORAGE_KEY = 'volante.pending_onboarding';
 const MAX_SLUG_ATTEMPTS = 50;
 
@@ -22,6 +23,12 @@ export interface CompleteOnboardingResult {
   status: 'completed' | 'already_completed' | 'no_pending';
   company?: EmpresaRow;
   slugAdjusted?: boolean;
+}
+
+export interface CompleteCurrentUserOnboardingResult {
+  status: 'completed' | 'already_completed';
+  company: EmpresaRow;
+  slugAdjusted: boolean;
 }
 
 type PendingOnboardingMap = Record<string, PendingOnboardingPayload>;
@@ -242,6 +249,26 @@ const updateUserCompanyMetadata = async (company: EmpresaRow) => {
   }
 };
 
+const ensureUserMembership = async (user: User, companyId: string) => {
+  const userEmail = user.email?.trim() || null;
+  const { error } = await fromSchema(USUARIOS_TABLE).upsert(
+    {
+      empresa_id: companyId,
+      user_id: user.id,
+      nivel_acesso: 'member',
+      email: userEmail,
+    },
+    {
+      onConflict: 'empresa_id,user_id',
+      ignoreDuplicates: true,
+    },
+  );
+
+  if (error) {
+    throw error;
+  }
+};
+
 export const savePendingOnboarding = (payload: PendingOnboardingPayload) => {
   const sanitizedPayload = ensureValidPendingPayload(payload);
   const pendingMap = readPendingMap();
@@ -264,6 +291,10 @@ export const completePendingOnboarding = async (
   const selectedEmail = (email?.trim() || sessionEmail).trim();
 
   if (readCompanyIdFromUser(sessionUser)) {
+    const existingCompanyId = readCompanyIdFromUser(sessionUser);
+    if (existingCompanyId) {
+      await ensureUserMembership(sessionUser, existingCompanyId);
+    }
     removePendingByEmail(selectedEmail);
     return { status: 'already_completed' };
   }
@@ -290,8 +321,58 @@ export const completePendingOnboarding = async (
     pendingPayload.companySlug,
   );
 
+  await ensureUserMembership(sessionUser, company.id);
   await updateUserCompanyMetadata(company);
   removePendingByEmail(pendingPayload.email);
+
+  return {
+    status: 'completed',
+    company,
+    slugAdjusted,
+  };
+};
+
+export const completeCurrentUserOnboarding = async (
+  companyName: string,
+): Promise<CompleteCurrentUserOnboardingResult> => {
+  const normalizedCompanyName = sanitizeCompanyName(companyName);
+  if (!normalizedCompanyName) {
+    throw new Error('Nome da empresa e obrigatorio para concluir o onboarding.');
+  }
+
+  const generatedSlug = normalizeCompanySlug(normalizedCompanyName);
+  if (!generatedSlug) {
+    throw new Error('Nao foi possivel gerar um slug valido para a empresa.');
+  }
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const sessionUser = sessionData.session?.user ?? null;
+
+  if (!sessionUser) {
+    throw new Error('Usuario nao autenticado para concluir o onboarding.');
+  }
+
+  const companyId = readCompanyIdFromUser(sessionUser);
+  if (companyId) {
+    await ensureUserMembership(sessionUser, companyId);
+    const existingCompany = await findCompanyById(companyId);
+    if (existingCompany) {
+      return {
+        status: 'already_completed',
+        company: existingCompany,
+        slugAdjusted: false,
+      };
+    }
+  }
+
+  const { company, slugAdjusted } = await createCompanyWithAvailableSlug(
+    sessionUser.id,
+    normalizedCompanyName,
+    generatedSlug,
+  );
+
+  await ensureUserMembership(sessionUser, company.id);
+  await updateUserCompanyMetadata(company);
 
   return {
     status: 'completed',

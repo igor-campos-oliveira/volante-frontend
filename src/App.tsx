@@ -18,6 +18,7 @@ import LoginPage from "./pages/Login";
 import EmployeesPage from "./pages/Employees/EmployeesPage";
 import { Users } from "lucide-react";
 import CatalogServicesPage from "./pages/CatalogServices/CatalogServicesPage";
+import OnboardingPage from "./pages/Onboarding";
 
 const MENU_LINKS = [
   {path: ROUTER_PATHS.HOME, label: 'Início',icon: <Home size={23}/>},
@@ -42,7 +43,7 @@ const INTERNAL_ROUTES = [
 ];
 
 const ProtectedLayout = () => {
-  const { isAuthenticated, isLoading } = useAuthContext();
+  const { isAuthenticated, isLoading, requiresOnboarding } = useAuthContext();
 
   if (isLoading) {
     return (
@@ -58,6 +59,10 @@ const ProtectedLayout = () => {
 
   if (!isAuthenticated) {
     return <LoginPage />;
+  }
+
+  if (requiresOnboarding) {
+    return <OnboardingPage />;
   }
 
   return (

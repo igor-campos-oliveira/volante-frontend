@@ -6,8 +6,6 @@ import { Form } from '@/components/ui/form'
 import { Input } from '@/components/ui/input'
 import {
   completePendingOnboarding,
-  normalizeCompanySlug,
-  savePendingOnboarding,
 } from '@/data/services/onboardingService'
 import { useAuthContext } from '@/hooks/useAuth'
 import { ArrowRight } from 'lucide-react'
@@ -20,8 +18,6 @@ interface ILoginForm {
   email: string
   password: string
   confirmPassword: string
-  companyName: string
-  companySlug: string
 }
 
 const SIGNUP_BACKOFF_MS = 60_000
@@ -199,7 +195,6 @@ export default function LoginPage() {
   const [isFlipping, setIsFlipping] = useState(false)
   const [flipDirection, setFlipDirection] = useState<'right' | 'left'>('right')
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isSlugManuallyEdited, setIsSlugManuallyEdited] = useState(false)
   const [signupRetryAvailableAt, setSignupRetryAvailableAt] = useState<number | null>(null)
   const [signupRateLimitByEmailUntil, setSignupRateLimitByEmailUntil] = useState<number | null>(null)
   const [pendingConfirmationEmail, setPendingConfirmationEmail] = useState<string | null>(null)
@@ -211,8 +206,6 @@ export default function LoginPage() {
       email: '',
       password: '',
       confirmPassword: '',
-      companyName: '',
-      companySlug: '',
     },
   })
   const flipTimersRef = useRef<Array<ReturnType<typeof setTimeout>>>([])
@@ -376,19 +369,7 @@ export default function LoginPage() {
         return
       }
 
-      const companyName = data.companyName.trim()
-      const companySlug = normalizeCompanySlug(data.companySlug)
-
-      savePendingOnboarding({
-        email: normalizedEmail,
-        companyName,
-        companySlug,
-      })
-
-      const response = await signup(normalizedEmail, data.password, {
-        onboarding_company_name: companyName,
-        onboarding_company_slug: companySlug,
-      })
+      const response = await signup(normalizedEmail, data.password)
 
       if (response.requiresEmailConfirmation) {
         setSignupRetryAvailableAt(null)
@@ -396,7 +377,7 @@ export default function LoginPage() {
         setSignupRateLimitByEmailUntil(null)
         setPendingConfirmationEmail(normalizedEmail)
         setResendAvailableAt(Date.now() + SIGNUP_BACKOFF_MS)
-        toast.success('Conta criada. Confirme seu e-mail para concluir o acesso e finalizar o onboarding.')
+        toast.success('Conta criada. Confirme seu e-mail para concluir o acesso.')
         setMode('signin')
         form.setValue('password', '')
         form.setValue('confirmPassword', '')
@@ -408,10 +389,7 @@ export default function LoginPage() {
         clearSignupEmailRateLimitUntil(normalizedEmail)
         setSignupRateLimitByEmailUntil(null)
         clearPendingConfirmation()
-        const onboardingResult = await completePendingOnboarding(normalizedEmail, {
-          companyName,
-          companySlug,
-        })
+        const onboardingResult = await completePendingOnboarding(normalizedEmail)
 
         if (onboardingResult.status === 'completed') {
           toast.success(
@@ -451,13 +429,11 @@ export default function LoginPage() {
 
         setSignupRetryAvailableAt(Date.now() + SIGNUP_BACKOFF_MS)
         clearPendingConfirmation()
-        const shouldHighlightSlug = errorMessage.toLowerCase().includes('slug')
-
-        form.setError(shouldHighlightSlug ? 'companySlug' : 'password', {
+        form.setError('password', {
           type: 'custom',
           message: errorMessage,
         })
-        form.setFocus(shouldHighlightSlug ? 'companySlug' : 'email')
+        form.setFocus('email')
       }
 
       toast.error(errorMessage)
@@ -517,9 +493,6 @@ export default function LoginPage() {
     const swapTimer = setTimeout(() => {
       setMode(nextMode)
       form.clearErrors()
-      if (nextMode === 'signin') {
-        setIsSlugManuallyEdited(false)
-      }
     }, MODE_SWAP_MS)
     const endTimer = setTimeout(() => setIsFlipping(false), FLIP_DURATION_MS)
     flipTimersRef.current = [swapTimer, endTimer]
@@ -650,65 +623,6 @@ export default function LoginPage() {
                       )}
                     </FormInput>
 
-                    <FormInput
-                      form={form}
-                      name='companyName'
-                      label='Nome da empresa'
-                      showValidationColors
-                      rules={{
-                        validate: (value: string) => value.trim().length > 0 || 'Nome da empresa e obrigatorio',
-                      }}
-                    >
-                      {(field) => (
-                        <Input
-                          placeholder='Ex.: Oficina Volante'
-                          className={animatedInputClassName}
-                          autoComplete='organization'
-                          {...field}
-                          onChange={(event) => {
-                            clearPendingConfirmationOnInputChange()
-                            field.onChange(event)
-                            if (!isSlugManuallyEdited) {
-                              form.setValue('companySlug', normalizeCompanySlug(event.target.value), {
-                                shouldDirty: true,
-                                shouldValidate: true,
-                              })
-                            }
-                          }}
-                        />
-                      )}
-                    </FormInput>
-
-                    <FormInput
-                      form={form}
-                      name='companySlug'
-                      label='Slug da empresa'
-                      showValidationColors
-                      rules={{
-                        validate: (value: string) => {
-                          const normalizedSlug = normalizeCompanySlug(value)
-                          if (!normalizedSlug) return 'Slug da empresa e obrigatorio'
-                          if (!/^[a-z0-9_]+$/.test(normalizedSlug)) {
-                            return 'Use apenas letras minusculas, numeros e underscore'
-                          }
-                          return true
-                        },
-                      }}
-                    >
-                      {(field) => (
-                        <Input
-                          placeholder='exemplo_oficina'
-                          className={animatedInputClassName}
-                          autoComplete='off'
-                          {...field}
-                          onChange={(event) => {
-                            clearPendingConfirmationOnInputChange()
-                            setIsSlugManuallyEdited(true)
-                            field.onChange(normalizeCompanySlug(event.target.value))
-                          }}
-                        />
-                      )}
-                    </FormInput>
                   </>
                 )}
 
@@ -735,7 +649,7 @@ export default function LoginPage() {
 
                   {pendingConfirmationEmail && (
                     <div className='rounded-md border border-zinc-200 bg-zinc-50 p-3 text-xs text-zinc-700'>
-                      <p>Conta criada para {pendingConfirmationEmail}. Confirme seu e-mail para concluir o onboarding.</p>
+                      <p>Conta criada para {pendingConfirmationEmail}. Confirme seu e-mail para concluir o acesso.</p>
                       <div className='mt-2 flex items-center justify-between gap-3'>
                         <span>
                           {isResendCooldownActive
