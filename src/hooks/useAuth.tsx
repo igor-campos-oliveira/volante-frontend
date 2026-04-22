@@ -1,8 +1,9 @@
 import { AuthAPI, IAuthResult, ICredential, SignupMetadata } from '@/data/api/LoginAPI';
+import { clearQueryClientCache } from '@/lib/react-query';
 import { supabase, supabaseSchema } from '@/utils/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { User } from '@supabase/supabase-js';
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 
 interface IAuthContext {
   isAuthenticated: boolean;
@@ -150,6 +151,8 @@ const resolveCompanyNameFromUser = async (user: User | null) => {
 
 const AuthProvider = ({ children }: any) => {
   const queryClient = useQueryClient();
+  const activeUserIdRef = useRef<string | null>(null);
+  const clearCachePromiseRef = useRef<Promise<void> | null>(null);
   const [isAuthenticated, setAuthenticated] = useState(false);
   const [isLoading, setLoading] = useState(true);
   const [credentials, setCredentials] = useState<ICredential | null>(null);
@@ -157,9 +160,46 @@ const AuthProvider = ({ children }: any) => {
   const [userCompanyName, setUserCompanyName] = useState<string | null>(null);
   const [userCompanyId, setUserCompanyId] = useState<string | null>(null);
 
+  const clearApplicationCache = async () => {
+    if (clearCachePromiseRef.current) {
+      await clearCachePromiseRef.current;
+      return;
+    }
+
+    const clearPromise = (async () => {
+      try {
+        const cacheSnapshot = await clearQueryClientCache(queryClient);
+
+        if (
+          import.meta.env.DEV &&
+          (cacheSnapshot.queryCountAfter !== 0 || cacheSnapshot.mutationCountAfter !== 0)
+        ) {
+          console.warn('[auth-cache] Cache nao foi totalmente limpo.', cacheSnapshot);
+        }
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn('[auth-cache] Falha ao limpar cache.', error);
+        }
+      }
+    })();
+
+    clearCachePromiseRef.current = clearPromise;
+
+    try {
+      await clearPromise;
+    } finally {
+      clearCachePromiseRef.current = null;
+    }
+  };
+
   const syncSessionState = async () => {
     const { data } = await supabase.auth.getSession();
     const session = data.session;
+    const sessionUserId = session?.user?.id ?? null;
+
+    if (activeUserIdRef.current && activeUserIdRef.current !== sessionUserId) {
+      await clearApplicationCache();
+    }
 
     if (session?.access_token && session.refresh_token) {
       const resolvedCompany = await resolveCompanyNameFromUser(session.user ?? null);
@@ -173,6 +213,7 @@ const AuthProvider = ({ children }: any) => {
       setUserCompanyId(resolvedCompany.companyId);
       setUserCompanyName(resolvedCompany.companyName);
       setAuthenticated(true);
+      activeUserIdRef.current = sessionUserId;
       return;
     }
 
@@ -181,6 +222,7 @@ const AuthProvider = ({ children }: any) => {
     setUserCompanyId(null);
     setUserCompanyName(null);
     setAuthenticated(false);
+    activeUserIdRef.current = null;
   };
 
   useEffect(() => {
@@ -195,8 +237,17 @@ const AuthProvider = ({ children }: any) => {
 
     bootSession();
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_, session) => {
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       void (async () => {
+        const sessionUserId = session?.user?.id ?? null;
+        const shouldClearCache =
+          event === 'SIGNED_OUT' ||
+          (activeUserIdRef.current !== null && activeUserIdRef.current !== sessionUserId);
+
+        if (shouldClearCache) {
+          await clearApplicationCache();
+        }
+
         if (session?.access_token && session.refresh_token) {
           const resolvedCompany = await resolveCompanyNameFromUser(session.user ?? null);
           setCredentials({
@@ -208,12 +259,14 @@ const AuthProvider = ({ children }: any) => {
           setUserCompanyId(resolvedCompany.companyId);
           setUserCompanyName(resolvedCompany.companyName);
           setAuthenticated(true);
+          activeUserIdRef.current = sessionUserId;
         } else {
           setCredentials(null);
           setUserEmail(null);
           setUserCompanyId(null);
           setUserCompanyName(null);
           setAuthenticated(false);
+          activeUserIdRef.current = null;
         }
         setLoading(false);
       })();
@@ -231,7 +284,7 @@ const AuthProvider = ({ children }: any) => {
       const response = await AuthAPI.login(email, password);
 
       if (response.data?.access_token) {
-        queryClient.resetQueries();
+        await clearApplicationCache();
         setCredentials(response.data);
         setUserEmail(email);
         const { data: sessionData } = await supabase.auth.getSession();
@@ -260,7 +313,7 @@ const AuthProvider = ({ children }: any) => {
       const response = await AuthAPI.signup(email, password, metadata);
 
       if (response.data?.access_token) {
-        queryClient.resetQueries();
+        await clearApplicationCache();
         setCredentials(response.data);
         setUserEmail(email);
         const { data: sessionData } = await supabase.auth.getSession();
@@ -286,8 +339,9 @@ const AuthProvider = ({ children }: any) => {
       setUserCompanyId(null);
       setUserCompanyName(null);
       setAuthenticated(false);
+      activeUserIdRef.current = null;
       setLoading(false);
-      queryClient.clear();
+      await clearApplicationCache();
     }
   };
 
