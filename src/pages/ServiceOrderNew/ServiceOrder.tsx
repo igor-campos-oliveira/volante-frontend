@@ -1,10 +1,17 @@
-import { ArrowLeft, Check, File, Save, Search, X } from 'lucide-react';
+import { ArrowLeft, Check, File, Plus, Save, Search, Trash2, X } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { CustomerForm } from '@/components/FormSheet/Customer';
 import { VehicleForm } from '@/components/FormSheet/Vehicle';
 import ServiceOrderItems from '../../components/ServiceOrderItems/ServiceOrderItems';
-import { ServiceOrder, ServiceOrderItem, STATUS_SERVICE_ORDER } from './types';
+import {
+  SERVICE_ORDER_PAYMENT_METHOD_OPTIONS,
+  ServiceOrder,
+  ServiceOrderItem,
+  ServiceOrderPayment,
+  ServiceOrderPaymentMethod,
+  STATUS_SERVICE_ORDER,
+} from './types';
 import { toast } from 'sonner';
 import StatusDropDown from '@/components/BadgeDropDown/BadgeDropDown';
 import { SO_STATUS_LIST } from '@/data/constants/utils';
@@ -13,6 +20,8 @@ import { ServiceOrderPDF } from '@/components/PDF/ServiceOrderPDF';
 import { Modal } from '@/components/Modal/Modal';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
 import { FormProvider, useForm } from 'react-hook-form';
 import { DEFAULT_CUSTOMER_VALUE } from '@/components/FormSheet/Customer/schema';
@@ -27,11 +36,18 @@ import { getVehiclesAPI, Vehicle } from '@/data/api/VehiclesAPI';
 import useDebounce from '@/hooks/useDebounce';
 import { DEBOUNCE_TIMEOUT } from '@/data/constants/utils';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-
 const DEFAULT_FORM_VALUES: Partial<ServiceOrder> = {
   id: undefined,
   uuid: undefined,
   service_order_items: [],
+  service_order_payments: [
+    {
+      uuid: 'payment-initial',
+      payment_method: '',
+      installment_number: 1,
+      installments_total: 1,
+    },
+  ],
   customer: DEFAULT_CUSTOMER_VALUE,
   vehicle: DEFAULT_VEHICLE_VALUES,
   status: STATUS_SERVICE_ORDER.EM_ABERTO,
@@ -47,6 +63,31 @@ const DEFAULT_FORM_VALUES: Partial<ServiceOrder> = {
 const normalizeDate = (value?: string) => (value ? String(value).substring(0, 10) : '');
 
 const createLocalItemId = () => `temp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const createLocalPaymentId = () => `payment-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+const SERVICE_ORDER_PAYMENT_METHOD_SET = new Set<string>(SERVICE_ORDER_PAYMENT_METHOD_OPTIONS);
+const PAYMENT_METHOD_LABEL_MAP: Record<ServiceOrderPaymentMethod, string> = {
+  cartao_credito: 'Cartao de credito',
+  dinheiro: 'Dinheiro',
+  cartao_debito: 'Cartao de debito',
+  pix: 'Pix',
+  transferencia: 'Transferencia',
+  cheque: 'Cheque',
+  voucher: 'Voucher',
+};
+
+const PAYMENT_METHOD_SELECT_OPTIONS = SERVICE_ORDER_PAYMENT_METHOD_OPTIONS.map((value) => ({
+  value,
+  label: PAYMENT_METHOD_LABEL_MAP[value],
+}));
+
+const createEmptyPayment = (): ServiceOrderPayment => ({
+  uuid: createLocalPaymentId(),
+  payment_method: '',
+  installment_number: 1,
+  installments_total: 1,
+});
+const ensureAtLeastOnePayment = (payments?: ServiceOrderPayment[] | []) =>
+  payments && payments.length > 0 ? payments : [createEmptyPayment()];
 const normalizePlate = (plate?: string | null) => String(plate || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 const IMAGE_UPLOAD_LIMIT = 12;
 const getImageFileKey = (file: File) => `${file.name}-${file.size}-${file.lastModified}`;
@@ -156,6 +197,7 @@ function ServiceOrderPage() {
         startAt: normalizeDate(serviceOrder.startAt),
         endAt: normalizeDate(serviceOrder.endAt),
         service_order_items: serviceOrder.service_order_items || [],
+        service_order_payments: ensureAtLeastOnePayment(serviceOrder.service_order_payments),
       } as ServiceOrder);
     },
     [methods],
@@ -167,7 +209,10 @@ function ServiceOrderPage() {
 
   useEffect(() => {
     if (!uuid && location.pathname === '/service-order/new') {
-      methods.reset(DEFAULT_FORM_VALUES as ServiceOrder);
+      methods.reset({
+        ...DEFAULT_FORM_VALUES,
+        service_order_payments: ensureAtLeastOnePayment(),
+      } as ServiceOrder);
       setCustomerSearchInput('');
       setVehicleSearchInput('');
       setPendingImageFiles([]);
@@ -190,6 +235,7 @@ function ServiceOrderPage() {
   }, [applyServiceOrderToForm, serviceOrderData]);
 
   const serviceOrderItems = methods.watch('service_order_items') || [];
+  const serviceOrderPayments: ServiceOrderPayment[] = methods.watch('service_order_payments') || [];
 
   const handleOnAddItem = async (newItem: ServiceOrderItem) => {
     methods.setValue(
@@ -228,6 +274,58 @@ function ServiceOrderPage() {
       console.error(error);
       toast.message('Erro ao remover item', { icon: <X /> });
     }
+  };
+
+  const handleAddPayment = () => {
+    methods.setValue('service_order_payments', [...serviceOrderPayments, createEmptyPayment()], {
+      shouldDirty: true,
+    });
+  };
+
+  const handleRemovePayment = (paymentUuid: string) => {
+    const remainingPayments = serviceOrderPayments.filter((payment) => payment.uuid !== paymentUuid);
+    methods.setValue(
+      'service_order_payments',
+      ensureAtLeastOnePayment(remainingPayments),
+      { shouldDirty: true },
+    );
+  };
+
+  const handleChangePaymentField = (
+    paymentUuid: string,
+    field: 'payment_method' | 'installment_number' | 'installments_total',
+    value: string,
+  ) => {
+    const updatedPayments: ServiceOrderPayment[] = serviceOrderPayments.map((payment): ServiceOrderPayment => {
+      if (payment.uuid !== paymentUuid) return payment;
+
+      if (field === 'payment_method') {
+        const normalizedMethod = String(value ?? '').trim();
+        return {
+          ...payment,
+          payment_method: SERVICE_ORDER_PAYMENT_METHOD_SET.has(normalizedMethod)
+            ? (normalizedMethod as ServiceOrderPaymentMethod)
+            : '',
+        };
+      }
+
+      const parsedValue = Number(value);
+      const normalizedValue = Number.isFinite(parsedValue) && parsedValue > 0 ? parsedValue : 1;
+
+      if (field === 'installment_number') {
+        return {
+          ...payment,
+          installment_number: normalizedValue,
+        };
+      }
+
+      return {
+        ...payment,
+        installments_total: normalizedValue,
+      };
+    });
+
+    methods.setValue('service_order_payments', updatedPayments, { shouldDirty: true });
   };
 
   const handleOnError = (error: unknown) => {
@@ -331,6 +429,7 @@ function ServiceOrderPage() {
       ...serviceOrder,
       id: serviceOrder.id ?? methods.getValues('id'),
       uuid: serviceOrder.uuid ?? methods.getValues('uuid'),
+      service_order_payments: serviceOrder.service_order_payments || [],
     });
   };
 
@@ -565,7 +664,7 @@ function ServiceOrderPage() {
               <Card className="flex flex-1 flex-col p-4 rounded-3xl gap-1">
                 <Textarea
                   className="flex-1"
-                  label="Anotacoes"
+                  label="Anotações"
                   {...methods.register('note')}
                   placeholder="Ex: avarias, acordos com o cliente..."
                 />
@@ -585,7 +684,7 @@ function ServiceOrderPage() {
               <>
                 {!currentOrderId && pendingImageFiles.length > 0 && (
                   <p className="mb-2 text-sm text-muted-foreground">
-                    {pendingImageFiles.length} imagem(ns) pendente(s). Elas serao enviadas ao salvar o orcamento.
+                    {pendingImageFiles.length} imagem(ns) pendente(s). Elas serão enviadas ao salvar o orçamento.
                   </p>
                 )}
                 <FileSelect
@@ -597,6 +696,81 @@ function ServiceOrderPage() {
                   resetSignal={fileSelectResetSignal}
                 />
               </>
+            )}
+          </Card>
+
+          <p className="text-md font-bold pl-4">Pagamento</p>
+          <Card className="p-4 rounded-3xl">
+            <div className="mb-3 flex items-center justify-between gap-3">
+              <p className="text-sm text-muted-foreground">Registre as condições de pagamento deste orcamento.</p>
+              <Button type="button" variant="outline" size="sm" onClick={handleAddPayment}>
+                <Plus size={16} className="mr-2" />
+                Adicionar
+              </Button>
+            </div>
+
+            {serviceOrderPayments.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum pagamento cadastrado.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                {serviceOrderPayments.map((payment) => (
+                  <Card key={payment.uuid} className="rounded-2xl border p-3">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_160px_160px_auto] md:items-end">
+                      <div className="flex flex-col gap-1">
+                        <Label className="text-sm">Forma de pagamento</Label>
+                        <Select
+                          value={payment.payment_method || undefined}
+                          onValueChange={(value) =>
+                            handleChangePaymentField(payment.uuid, 'payment_method', value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {PAYMENT_METHOD_SELECT_OPTIONS.map((option) => (
+                              <SelectItem key={option.value} value={option.value}>
+                                {option.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Input
+                        label="Numero da parcela"
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={payment.installment_number || 1}
+                        onChange={(event) =>
+                          handleChangePaymentField(payment.uuid, 'installment_number', event.target.value)
+                        }
+                      />
+                      <Input
+                        label="Total de parcelas"
+                        type="number"
+                        min={1}
+                        step={1}
+                        value={payment.installments_total || 1}
+                        onChange={(event) =>
+                          handleChangePaymentField(payment.uuid, 'installments_total', event.target.value)
+                        }
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="text-red-500 hover:bg-red-50 hover:text-red-600"
+                        onClick={() => handleRemovePayment(payment.uuid)}
+                        aria-label="Remover pagamento"
+                        title="Remover pagamento"
+                      >
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  </Card>
+                ))}
+              </div>
             )}
           </Card>
         </div>

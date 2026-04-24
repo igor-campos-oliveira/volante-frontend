@@ -21,6 +21,7 @@ export type ServiceOrder = {
   vehicle: VehicleSchema;
   items: ServiceOrderItem[] | [];
   service_order_items: ServiceOrderItem[] | [];
+  service_order_payments?: ServiceOrderPayment[] | [];
 };
 
 export type ServiceOrderItem = {
@@ -40,6 +41,21 @@ export type ServiceOrderVehicle = {
   brand: string;
   model: string;
   year: string;
+};
+
+export type ServiceOrderPayment = {
+  uuid: string;
+  payment_method:
+    | 'cartao_credito'
+    | 'dinheiro'
+    | 'cartao_debito'
+    | 'pix'
+    | 'transferencia'
+    | 'cheque'
+    | 'voucher'
+    | '';
+  installment_number: number;
+  installments_total: number;
 };
 
 export enum STATUS_SERVICE_ORDER {

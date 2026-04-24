@@ -4,6 +4,18 @@
 import { CustomerSchema } from "@/components/FormSheet/Customer/schema"
 import { VehicleSchema } from "@/components/FormSheet/Vehicle/schema"
 
+export const SERVICE_ORDER_PAYMENT_METHOD_OPTIONS = [
+    "cartao_credito",
+    "dinheiro",
+    "cartao_debito",
+    "pix",
+    "transferencia",
+    "cheque",
+    "voucher",
+] as const
+
+export type ServiceOrderPaymentMethod = typeof SERVICE_ORDER_PAYMENT_METHOD_OPTIONS[number]
+
 export type ServiceOrder = {
     id?: number | string,
     uuid: string
@@ -21,6 +33,7 @@ export type ServiceOrder = {
     vehicle: VehicleSchema,
     items: ServiceOrderItem[] | [],
     service_order_items: ServiceOrderItem[] | []
+    service_order_payments?: ServiceOrderPayment[] | []
 }
 
 export type ServiceOrderItem = {
@@ -40,6 +53,13 @@ export type ServiceOrderVehicle = {
     brand: string,
     model: string,
     year: string
+}
+
+export type ServiceOrderPayment = {
+    uuid: string
+    payment_method: ServiceOrderPaymentMethod | ""
+    installment_number: number
+    installments_total: number
 }
 
 export enum STATUS_SERVICE_ORDER {

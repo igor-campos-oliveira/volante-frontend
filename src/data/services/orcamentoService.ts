@@ -3,6 +3,7 @@ import { CustomerSchema } from '@/components/FormSheet/Customer/schema';
 import { VehicleSchema } from '@/components/FormSheet/Vehicle/schema';
 import { ServiceOrder, STATUS_SERVICE_ORDER } from '@/pages/ServiceOrderNew/types';
 import { loadOrcamentoItems, syncOrcamentoItems } from './orcamentoItemService';
+import { loadOrcamentoPayments, syncOrcamentoPayments } from './orcamentoPagamentoService';
 
 type FilterOption = 'vehicle' | 'customer';
 
@@ -122,11 +123,13 @@ const mapOrderRowToServiceOrder = ({
   customer,
   vehicle,
   serviceOrderItems,
+  serviceOrderPayments,
 }: {
   order: OrcamentoRow;
   customer?: CustomerRow;
   vehicle?: VehicleRow;
   serviceOrderItems?: ServiceOrder['service_order_items'];
+  serviceOrderPayments?: ServiceOrder['service_order_payments'];
 }): ServiceOrder => ({
   id: order.id,
   uuid: String(order.id),
@@ -140,6 +143,7 @@ const mapOrderRowToServiceOrder = ({
   vehicle: mapVehicleRowToSchema(vehicle, order.placa),
   items: serviceOrderItems ?? [],
   service_order_items: serviceOrderItems ?? [],
+  service_order_payments: serviceOrderPayments ?? [],
   duration_quantity: 0,
   duration_type: 'day',
   images: [],
@@ -426,12 +430,13 @@ export async function getServiceOrderById(id: string | number): Promise<ServiceO
   const { data: order, error: orderError } = await fromSchema(ORCAMENTOS_TABLE).select('*').eq('id', parsedId).single();
   if (orderError) throw orderError;
 
-  const [customerResult, vehicleResult, items] = await Promise.all([
+  const [customerResult, vehicleResult, items, payments] = await Promise.all([
     order.cliente_id
       ? fromSchema('clientes').select('*').eq('id', order.cliente_id).maybeSingle()
       : Promise.resolve({ data: null, error: null }),
     fromSchema('carros').select('*').eq('placa', order.placa).maybeSingle(),
     loadOrcamentoItems(parsedId),
+    loadOrcamentoPayments(parsedId),
   ]);
 
   if (customerResult.error) throw customerResult.error;
@@ -442,6 +447,7 @@ export async function getServiceOrderById(id: string | number): Promise<ServiceO
     customer: customerResult.data ?? undefined,
     vehicle: vehicleResult.data ?? undefined,
     serviceOrderItems: items,
+    serviceOrderPayments: payments,
   });
 }
 
@@ -486,13 +492,14 @@ export async function saveServiceOrder(serviceOrder: ServiceOrder): Promise<Serv
   const parsedId = parseNumericId(serviceOrder.id ?? serviceOrder.uuid);
 
   const { data: savedOrder, error } = parsedId
-    ? await fromSchema(ORCAMENTOS_TABLE).update(payload).eq('id', parsedId).select('id').single()
-    : await fromSchema(ORCAMENTOS_TABLE).insert(payload).select('id').single();
+    ? await fromSchema(ORCAMENTOS_TABLE).update(payload).eq('id', parsedId).select('id, empresa_id').single()
+    : await fromSchema(ORCAMENTOS_TABLE).insert(payload).select('id, empresa_id').single();
 
   if (error) throw error;
 
   const orderId = savedOrder.id as number;
   await syncOrcamentoItems(orderId, serviceOrder.service_order_items || []);
+  await syncOrcamentoPayments(orderId, serviceOrder.service_order_payments || [], savedOrder.empresa_id);
 
   return getServiceOrderById(orderId);
 }
