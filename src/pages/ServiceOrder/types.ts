@@ -56,6 +56,7 @@ export type ServiceOrderPayment = {
     | '';
   installment_number: number;
   installments_total: number;
+  paid_amount: number;
 };
 
 export enum STATUS_SERVICE_ORDER {

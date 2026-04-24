@@ -3,7 +3,11 @@ import { CustomerSchema } from '@/components/FormSheet/Customer/schema';
 import { VehicleSchema } from '@/components/FormSheet/Vehicle/schema';
 import { ServiceOrder, STATUS_SERVICE_ORDER } from '@/pages/ServiceOrderNew/types';
 import { loadOrcamentoItems, syncOrcamentoItems } from './orcamentoItemService';
-import { loadOrcamentoPayments, syncOrcamentoPayments } from './orcamentoPagamentoService';
+import {
+  loadOrcamentoPayments,
+  loadOrcamentoPaymentsByOrderIds,
+  syncOrcamentoPayments,
+} from './orcamentoPagamentoService';
 
 type FilterOption = 'vehicle' | 'customer';
 
@@ -367,17 +371,19 @@ export async function getServiceOrders(searchValue = '', page = 1, filter: Filte
   const orderIds = Array.from(new Set(orders.map((order) => order.id).filter((id): id is number => Number.isFinite(id))));
   const plates = Array.from(new Set(orders.map((order) => normalizePlate(order.placa)).filter(Boolean)));
 
-  const [customersMap, vehiclesMap, itemsMap] = await Promise.all([
+  const [customersMap, vehiclesMap, itemsMap, paymentsMap] = await Promise.all([
     loadCustomersMap(customerIds),
     loadVehiclesMap(plates),
     loadItemsByOrderIds(orderIds),
+    loadOrcamentoPaymentsByOrderIds(orderIds),
   ]);
 
   const mappedOrders = orders.map((order) => {
     const customer = order.cliente_id ? customersMap.get(String(order.cliente_id)) : undefined;
     const vehicle = vehiclesMap.get(normalizePlate(order.placa));
     const serviceOrderItems = itemsMap.get(order.id) ?? [];
-    return mapOrderRowToServiceOrder({ order, customer, vehicle, serviceOrderItems });
+    const serviceOrderPayments = paymentsMap.get(order.id) ?? [];
+    return mapOrderRowToServiceOrder({ order, customer, vehicle, serviceOrderItems, serviceOrderPayments });
   });
 
   return {
@@ -409,15 +415,20 @@ export async function getServiceOrdersByCustomerId(customerId: string | number):
   }
 
   const plates = Array.from(new Set(orders.map((order) => normalizePlate(order.placa)).filter(Boolean)));
-  const [customersMap, vehiclesMap] = await Promise.all([
+  const orderIds = Array.from(new Set(orders.map((order) => order.id).filter((id): id is number => Number.isFinite(id))));
+  const [customersMap, vehiclesMap, itemsMap, paymentsMap] = await Promise.all([
     loadCustomersMap([parsedCustomerId]),
     loadVehiclesMap(plates),
+    loadItemsByOrderIds(orderIds),
+    loadOrcamentoPaymentsByOrderIds(orderIds),
   ]);
 
   return orders.map((order) => {
     const customer = customersMap.get(String(order.cliente_id ?? parsedCustomerId));
     const vehicle = vehiclesMap.get(normalizePlate(order.placa));
-    return mapOrderRowToServiceOrder({ order, customer, vehicle });
+    const serviceOrderItems = itemsMap.get(order.id) ?? [];
+    const serviceOrderPayments = paymentsMap.get(order.id) ?? [];
+    return mapOrderRowToServiceOrder({ order, customer, vehicle, serviceOrderItems, serviceOrderPayments });
   });
 }
 

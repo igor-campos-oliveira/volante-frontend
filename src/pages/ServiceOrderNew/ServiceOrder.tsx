@@ -46,6 +46,7 @@ const DEFAULT_FORM_VALUES: Partial<ServiceOrder> = {
       payment_method: '',
       installment_number: 1,
       installments_total: 1,
+      paid_amount: 0,
     },
   ],
   customer: DEFAULT_CUSTOMER_VALUE,
@@ -79,12 +80,22 @@ const PAYMENT_METHOD_SELECT_OPTIONS = SERVICE_ORDER_PAYMENT_METHOD_OPTIONS.map((
   value,
   label: PAYMENT_METHOD_LABEL_MAP[value],
 }));
+const moneyFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+});
+const parseCurrencyInput = (value: string) => {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (!digits) return 0;
+  return Number(digits) / 100;
+};
 
 const createEmptyPayment = (): ServiceOrderPayment => ({
   uuid: createLocalPaymentId(),
   payment_method: '',
   installment_number: 1,
   installments_total: 1,
+  paid_amount: 0,
 });
 const ensureAtLeastOnePayment = (payments?: ServiceOrderPayment[] | []) =>
   payments && payments.length > 0 ? payments : [createEmptyPayment()];
@@ -293,7 +304,7 @@ function ServiceOrderPage() {
 
   const handleChangePaymentField = (
     paymentUuid: string,
-    field: 'payment_method' | 'installment_number' | 'installments_total',
+    field: 'payment_method' | 'installment_number' | 'installments_total' | 'paid_amount',
     value: string,
   ) => {
     const updatedPayments: ServiceOrderPayment[] = serviceOrderPayments.map((payment): ServiceOrderPayment => {
@@ -316,6 +327,13 @@ function ServiceOrderPage() {
         return {
           ...payment,
           installment_number: normalizedValue,
+        };
+      }
+
+      if (field === 'paid_amount') {
+        return {
+          ...payment,
+          paid_amount: parseCurrencyInput(value),
         };
       }
 
@@ -715,7 +733,7 @@ function ServiceOrderPage() {
               <div className="flex flex-col gap-3">
                 {serviceOrderPayments.map((payment) => (
                   <Card key={payment.uuid} className="rounded-2xl border p-3">
-                    <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_160px_160px_auto] md:items-end">
+                    <div className="grid grid-cols-1 gap-2 md:grid-cols-[1fr_150px_150px_150px_auto] md:items-end">
                       <div className="flex flex-col gap-1">
                         <Label className="text-sm">Forma de pagamento</Label>
                         <Select
@@ -754,6 +772,16 @@ function ServiceOrderPage() {
                         value={payment.installments_total || 1}
                         onChange={(event) =>
                           handleChangePaymentField(payment.uuid, 'installments_total', event.target.value)
+                        }
+                      />
+                      <Input
+                        label="Valor Pago"
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="R$ 0,00"
+                        value={moneyFormatter.format(Number(payment.paid_amount) || 0)}
+                        onChange={(event) =>
+                          handleChangePaymentField(payment.uuid, 'paid_amount', event.target.value)
                         }
                       />
                       <Button

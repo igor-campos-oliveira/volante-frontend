@@ -14,6 +14,7 @@ import useDebounce from "@/hooks/useDebounce";
 import { currencyFormat, sortByCreatedAtDesc } from "@/lib/utils";
 import { ROUTER_PATHS } from "@/routes/routes";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -99,6 +100,7 @@ export default function SearchServiceOrdersPage() {
 
   const getOrderMetrics = (serviceOrder: ServiceOrder) => {
     const items = serviceOrder?.service_order_items || serviceOrder?.items || [];
+    const payments = serviceOrder?.service_order_payments || [];
 
     const itemsCount = items.length;
     const totalValue = items.reduce((acc, item) => {
@@ -110,7 +112,14 @@ export default function SearchServiceOrdersPage() {
       return acc + (Number.isFinite(mappedTotal) ? mappedTotal : quantity * value - discount);
     }, 0);
 
-    return { itemsCount, totalValue };
+    const totalPaid = payments.reduce((acc, payment) => {
+      const paidAmount = Number(payment?.paid_amount);
+      return acc + (Number.isFinite(paidAmount) ? paidAmount : 0);
+    }, 0);
+
+    const hasPartialPayment = totalValue > 0 && totalPaid < totalValue;
+
+    return { itemsCount, totalValue, totalPaid, hasPartialPayment };
   };
 
   return (
@@ -150,7 +159,7 @@ export default function SearchServiceOrdersPage() {
         )}
 
         {sortedServiceOrdersData.map((serviceOrder: ServiceOrder, index: number) => {
-          const { itemsCount, totalValue } = getOrderMetrics(serviceOrder);
+          const { itemsCount, totalValue, totalPaid, hasPartialPayment } = getOrderMetrics(serviceOrder);
           const serviceOrderKey = serviceOrder?.uuid || serviceOrder?.id || `service-order-${index}`;
 
           return (
@@ -168,6 +177,15 @@ export default function SearchServiceOrdersPage() {
                 description={serviceOrder?.customer?.name || "Cliente não identificado"}
               >
                 <Card.HeaderActions>
+                  {hasPartialPayment && (
+                    <span
+                      className="mr-2 inline-flex items-center text-amber-500"
+                      title="Este orçamento não foi pago totalmente."
+                      aria-label="Este orçamento não foi pago totalmente."
+                    >
+                      <AlertTriangle size={16} />
+                    </span>
+                  )}
                   <div onClick={(e) => e.stopPropagation()}>
                     <StatusDropDown
                       title="Atualizar status"
@@ -188,11 +206,21 @@ export default function SearchServiceOrdersPage() {
                     <CarPlate plate={serviceOrder?.vehicle?.plate || ""} />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                     <div className="rounded-xl border border-zinc-200 bg-white/70 p-2.5">
                       <p className="text-[11px] tracking-[0.08em] text-zinc-500">VALOR TOTAL</p>
                       <p className="mt-1 text-sm font-semibold text-zinc-900">
                         {currencyFormat(totalValue, "currency")}
+                      </p>
+                    </div>
+                    <div className="rounded-xl border border-zinc-200 bg-white/70 p-2.5">
+                      <p className="text-[11px] tracking-[0.08em] text-zinc-500">VALOR PAGO</p>
+                      <p
+                        className={`mt-1 text-sm font-semibold ${
+                          hasPartialPayment ? "text-amber-600" : "text-zinc-900"
+                        }`}
+                      >
+                        {currencyFormat(totalPaid, "currency")}
                       </p>
                     </div>
                     <div className="rounded-xl border border-zinc-200 bg-white/70 p-2.5">

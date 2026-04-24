@@ -28,7 +28,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import useDebounce from "@/hooks/useDebounce";
-import { isToday, sortByCreatedAtDesc } from "@/lib/utils";
+import { currencyFormat, isToday, sortByCreatedAtDesc } from "@/lib/utils";
 import {
   useInfiniteQuery,
   useMutation,
@@ -45,6 +45,7 @@ import {
   Phone,
   Plus,
   Trash2,
+  AlertTriangle,
 } from "lucide-react";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
@@ -102,6 +103,28 @@ export default function CustomersPage() {
     enabled: Boolean(customerToViewBudgets?.id),
   });
   const sortedCustomerBudgets = sortByCreatedAtDesc(customerBudgets);
+  const getBudgetMetrics = (serviceOrder: ServiceOrder) => {
+    const items = serviceOrder?.service_order_items || serviceOrder?.items || [];
+    const payments = serviceOrder?.service_order_payments || [];
+
+    const totalValue = items.reduce((acc, item) => {
+      const quantity = Number(item?.quantity) || 0;
+      const value = Number(item?.value) || 0;
+      const discount = Number(item?.discount) || 0;
+      const mappedTotal = Number(item?.total);
+
+      return acc + (Number.isFinite(mappedTotal) ? mappedTotal : quantity * value - discount);
+    }, 0);
+
+    const totalPaid = payments.reduce((acc, payment) => {
+      const paidAmount = Number(payment?.paid_amount);
+      return acc + (Number.isFinite(paidAmount) ? paidAmount : 0);
+    }, 0);
+
+    const hasPartialPayment = totalValue > 0 && totalPaid < totalValue;
+
+    return { totalValue, totalPaid, hasPartialPayment };
+  };
 
   const openCreateModal = () => {
     setEditingCustomer(null);
@@ -313,6 +336,9 @@ export default function CustomersPage() {
               !isFetchingBudgets &&
               sortedCustomerBudgets.map((serviceOrder) => {
                 const statusOption = getStatusOption(serviceOrder.status);
+                const { totalValue, totalPaid, hasPartialPayment } = getBudgetMetrics(
+                  serviceOrder as ServiceOrder,
+                );
 
                 return (
                   <button
@@ -322,9 +348,20 @@ export default function CustomersPage() {
                     className="w-full rounded-lg border p-3 text-left transition hover:bg-muted"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-medium">
-                        Orçamento #{serviceOrder.uuid || serviceOrder.id}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-medium">
+                          Orçamento #{serviceOrder.uuid || serviceOrder.id}
+                        </p>
+                        {hasPartialPayment && (
+                          <span
+                            className="inline-flex items-center text-amber-500"
+                            title="Este orçamento não foi pago totalmente."
+                            aria-label="Este orçamento não foi pago totalmente."
+                          >
+                            <AlertTriangle size={14} />
+                          </span>
+                        )}
+                      </div>
                       <span
                         className={`rounded-full px-2 py-1 text-xs font-medium ${statusOption
                           ? `${statusOption.color} text-white`
@@ -345,6 +382,16 @@ export default function CustomersPage() {
                       <p className="flex items-center gap-1">
                         <ClipboardList size={14} />
                         Placa: {serviceOrder?.vehicle?.plate || "não informada"}
+                      </p>
+                      <p className="flex items-center gap-1">
+                        Total: {currencyFormat(totalValue, "currency")}
+                      </p>
+                      <p
+                        className={`flex items-center gap-1 ${
+                          hasPartialPayment ? "font-medium text-amber-600" : ""
+                        }`}
+                      >
+                        Valor Pago: {currencyFormat(totalPaid, "currency")}
                       </p>
                     </div>
                   </button>

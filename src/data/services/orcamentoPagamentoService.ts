@@ -12,6 +12,7 @@ interface OrcamentoPaymentRow {
   forma_pagamento: string | null;
   numero_parcela: number | string | null;
   total_parcelas: number | string | null;
+  valor_pago: number | string | null;
   orcamento_id: number | null;
   empresa_id?: string | null;
 }
@@ -29,6 +30,11 @@ const parsePositiveNumber = (value: unknown) => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
+const parseNonNegativeNumber = (value: unknown) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
+};
+
 const normalizePaymentMethod = (value: unknown): ServiceOrderPaymentMethod | '' => {
   const normalizedValue = String(value ?? '').trim();
   return SERVICE_ORDER_PAYMENT_METHOD_SET.has(normalizedValue)
@@ -36,13 +42,18 @@ const normalizePaymentMethod = (value: unknown): ServiceOrderPaymentMethod | '' 
     : '';
 };
 
-const hasPaymentData = (payment?: ServiceOrderPayment) => Boolean(normalizePaymentMethod(payment?.payment_method));
+const hasPaymentData = (payment?: ServiceOrderPayment) =>
+  Boolean(
+    normalizePaymentMethod(payment?.payment_method) ||
+      (parseNonNegativeNumber(payment?.paid_amount) ?? 0) > 0,
+  );
 
 const mapRowToServiceOrderPayment = (row: OrcamentoPaymentRow): ServiceOrderPayment => ({
   uuid: String(row.id),
   payment_method: normalizePaymentMethod(row.forma_pagamento),
   installment_number: parsePositiveNumber(row.numero_parcela) ?? 1,
   installments_total: parsePositiveNumber(row.total_parcelas) ?? 1,
+  paid_amount: parseNonNegativeNumber(row.valor_pago) ?? 0,
 });
 
 export async function loadOrcamentoPayments(orcamentoId: number): Promise<ServiceOrderPayment[]> {
@@ -77,6 +88,7 @@ export async function syncOrcamentoPayments(
         forma_pagamento: paymentMethod || null,
         numero_parcela: parsePositiveNumber(payment.installment_number),
         total_parcelas: parsePositiveNumber(payment.installments_total),
+        valor_pago: parseNonNegativeNumber(payment.paid_amount),
         orcamento_id: orcamentoId,
         ...(empresaId ? { empresa_id: empresaId } : {}),
       };
@@ -107,4 +119,28 @@ export async function syncOrcamentoPayments(
   }
 
   return loadOrcamentoPayments(orcamentoId);
+}
+
+export async function loadOrcamentoPaymentsByOrderIds(orderIds: number[]): Promise<Map<number, ServiceOrderPayment[]>> {
+  if (!orderIds.length) return new Map<number, ServiceOrderPayment[]>();
+
+  const { data, error } = await fromSchema(ORCAMENTO_PAYMENTS_TABLE)
+    .select('*')
+    .in('orcamento_id', orderIds)
+    .order('id', { ascending: true });
+
+  if (error) throw error;
+
+  const paymentsMap = new Map<number, ServiceOrderPayment[]>();
+
+  ((data ?? []) as OrcamentoPaymentRow[]).forEach((paymentRow) => {
+    const orderId = parseNumericId(paymentRow.orcamento_id);
+    if (!orderId) return;
+
+    const mappedPayment = mapRowToServiceOrderPayment(paymentRow);
+    const currentPayments = paymentsMap.get(orderId) ?? [];
+    paymentsMap.set(orderId, [...currentPayments, mappedPayment]);
+  });
+
+  return paymentsMap;
 }
