@@ -10,9 +10,13 @@
     "tauri": "tauri dev"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
     "@heroui/react": "^3.0.2",
     "@heroui/styles": "^3.0.2",
     "@hookform/resolvers": "^3.3.4",
+    "@mui/material": "^9.0.1",
+    "@mui/x-charts": "^9.1.0",
     "@radix-ui/react-avatar": "^1.0.4",
     "@radix-ui/react-dialog": "^1.0.5",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
